@@ -229,12 +229,15 @@ fn deleteEmptyNestedSubArray totalOverlappedFacesArray =
 )
 
 
-
 -- Get the element faces in an array
 -- Main code starts here
 
 -- Get the object
 mainObj = $
+
+unwrapMod =  mainObj.modifiers[mainObj.modifiers.count]
+selectedFaces = unwrapMod.getSelectedFaces()
+collapseStack mainObj
 
 obj = copy mainObj
 
@@ -243,6 +246,12 @@ ChannelInfo.PasteChannel obj 1 1
 
 convertToMesh obj
 convertToPoly obj
+
+toDelete = -selectedFaces
+polyop.deleteFaces obj toDelete
+CenterPivot obj
+ResetXForm obj
+collapseStack obj
 
 elementFacesArray = #()
 
@@ -324,3 +333,15 @@ removeOverlappedFacesArrayDuplicates totalOverlappedFacesArray
 deleteEmptyNestedSubArray totalOverlappedFacesArray
 
 format "\nTotal overlapped array: %" totalOverlappedFacesArray
+
+delete obj
+
+addModifier mainObj unwrapMod
+unwrapMod.edit()
+unwrapMod.setTVSubObjectMode 3
+
+for i = 1 to totalOverlappedFacesArray.count do
+(
+	unwrapMod.selectFaces totalOverlappedFacesArray[i]
+	unwrapMod.GroupCreateBySelection()
+)
