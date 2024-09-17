@@ -103,7 +103,7 @@ for f = 1 to numFaces do
 		join combinedEdgeArr elementEdges[i]
 	)
 	
-	combinedEdgeArr = (makeUniqueArray combinedEdgeArr) as BitArray
+	combinedEdgeArr = makeUniqueArray combinedEdgeArr
 	
 	appendIfUnique elementFacesArray elementFaces
 	appendIfUnique elementEdgesArray combinedEdgeArr
@@ -119,7 +119,7 @@ for i = 1 to elementEdgesArray.count do
 (
 	
 -- 	Compare each and every edge to every other edge
-	for j = i to elementEdgesArray.count where i != j do
+	for j = i + 1 to elementEdgesArray.count where i != j do
 	(
 		format "\nelementEdgesArray count: % \n" elementEdgesArray[i].count
 		format "NextelementEdgesArray count: % \n" elementEdgesArray[j].count
