@@ -24,7 +24,6 @@ fn edgeIntersect currElementEdge nextElementEdge =
 	x4 = vertPos4.x
 	y4 = vertPos4.y
 	
-	
 	denominator = ((x1-x2)*(y3-y4)) - ((y1-y2)*(x3-x4))
 	
 	if denominator == 0 do return false
@@ -62,8 +61,41 @@ fn doesEdgeIntersect currElementEdgesArray nextElementEdgesArray =
 	return boolFlagIntersect
 )
 
--- Code starts here
+fn enterTotalArray currElementFaceIndex nextElementFaceIndex = 
+(
+	local isOverlapping = false
+	
+	if totalOverlappedFacesArray.count == 0 then
+	(
+		tempArray = elementFacesArray[currElementFaceIndex] + elementFacesArray[nextElementFaceIndex]
+		append totalOverlappedFacesArray tempArray
+	)
+	else
+	(
+		local tempCombinedArray = elementFacesArray[currElementFaceIndex] + elementFacesArray[nextElementFaceIndex]
+		
+		for i = 1 to totalOverlappedFacesArray.count do
+		(
+			if (tempCombinedArray * totalOverlappedFacesArray[i]).isEmpty == false then
+			(
+				totalOverlappedFacesArray[i] += tempCombinedArray
+				isOverlapping = true
+				continue
+			)
+		)
+		
+		 if not isOverlapping do
+		(
+			append totalOverlappedFacesArray tempCombinedArray
+		)
+	)
+)
 
+
+max create mode
+
+-- Code starts here
+start = timeStamp()
 mainObj = $
 
 obj = copy mainObj
@@ -112,6 +144,7 @@ for f = 1 to numFaces do
 format "elementFacesArray: %\n" elementFacesArray
 format "elementEdgesArray: % %\n" elementEdgesArray elementEdgesArray.count
 
+totalOverlappedFacesArray = #()
 
 boolFlag = false
 
@@ -121,12 +154,20 @@ for i = 1 to elementEdgesArray.count do
 -- 	Compare each and every edge to every other edge
 	for j = i + 1 to elementEdgesArray.count where i != j do
 	(
-		format "\nelementEdgesArray count: % \n" elementEdgesArray[i].count
-		format "NextelementEdgesArray count: % \n" elementEdgesArray[j].count
-		format "Element i[%]: %\n" i elementEdgesArray[i]
-		format "Element j[%]: %\n" j elementEdgesArray[j]
+-- 		format "\nelementEdgesArray count: % \n" elementEdgesArray[i].count
+-- 		format "NextelementEdgesArray count: % \n" elementEdgesArray[j].count
+-- 		format "Element i[%]: %\n" i elementEdgesArray[i]
+-- 		format "Element j[%]: %\n" j elementEdgesArray[j]
 		
 		booLFlag = doesEdgeIntersect elementEdgesArray[i] elementEdgesArray[j]
-		
+		if boolFlag do
+		(
+			enterTotalArray i j
+		)
 	)
 )
+
+format "\nTotal overlapped array: %" totalOverlappedFacesArray
+
+end = timeStamp()
+format "Processing took % seconds\n" ((end - start) / 1000.0)
