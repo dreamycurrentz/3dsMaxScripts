@@ -40,7 +40,7 @@ fn enterTotalArray currElementFaceIndex nextElementFaceIndex =
 		(
 			totalOverlappedFacesArray[i] += tempCombinedArray
 			isOverlapping = true
-			continue
+			break
 		)
 	)
 
