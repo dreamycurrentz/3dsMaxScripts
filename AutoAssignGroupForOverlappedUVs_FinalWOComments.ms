@@ -176,3 +176,27 @@ with undo off
 		)
 	)
 )
+
+
+/* Testing for materials. Kindly ignore
+obj = $selection[1]
+currMat = obj.material
+currMat1 = copy currMat
+
+multiMat = MultiMaterial numsubs: 2
+multiMat.materialList[1] = obj.material
+multiMat.materialList[2] = obj.material
+
+
+unwrapMod =  obj.modifiers[obj.modifiers.count]
+selectedFaces = unwrapMod.getSelectedFaces()
+
+format "\nSelected faces: %" selectedFaces
+
+for f in selectedFaces do
+(
+	polyop.setFaceMatID obj f 2
+)
+
+obj.material = multiMat
+*/
