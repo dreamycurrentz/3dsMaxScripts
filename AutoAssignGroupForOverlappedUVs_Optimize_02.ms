@@ -1,10 +1,6 @@
-/*
 fn hasUVWUnwrapModifier obj =
 (
-	if (classOf obj.modifiers[obj.modifiers.count] == Unwrap_UVW) then
-		return true
-	else
-		return false
+	(classOf obj.modifiers[obj.modifiers.count] == Unwrap_UVW)
 )
 
 
@@ -32,6 +28,24 @@ fn enterTotalArray currElementFaceIndex nextElementFaceIndex =
 	
 	local tempCombinedArray = elementFacesArray[currElementFaceIndex] + elementFacesArray[nextElementFaceIndex]
 	
+-- 	local counter = 1
+-- 	
+-- 	while ((not isOverlapping) and (counter <= totalOverlappedFacesArray.count)) do
+-- 	(
+-- 		if (tempCombinedArray * totalOverlappedFacesArray[counter]).isEmpty == false then
+-- 		(
+-- 			totalOverlappedFacesArray[counter] += tempCombinedArray
+-- 			isOverlapping = true
+-- 		)
+-- 		counter += 1
+-- 	)
+-- 	
+-- 	if not isOverlapping do
+-- 	(
+-- 		append totalOverlappedFacesArray tempCombinedArray
+-- 	)
+	
+	
 	for i = 1 to totalOverlappedFacesArray.count do
 	(
 		if (tempCombinedArray * totalOverlappedFacesArray[i]).isEmpty == false then
@@ -41,27 +55,44 @@ fn enterTotalArray currElementFaceIndex nextElementFaceIndex =
 			break
 		)
 	)
-
+	
 	if not isOverlapping do
 	(
 		append totalOverlappedFacesArray tempCombinedArray
 	)
+
 )
 
-fn getElementFacesArray obj = 
+fn getElementFacesArray obj selectedFaces = 
 (
-	local numfaces = polyOp.getNumFaces obj
+	format "\nSelected faces %\n" selectedFaces
 	
-	local faces = (for i = 1 to numfaces collect i) as BitArray
+	visitedFaces = #{}
 	
 	polyOp_getElementsUsingFace = polyOp.getElementsUsingFace
 	
+	local numfaces = polyOp.getNumFaces obj
+	local faces = (for i = 1 to numfaces where (selectedFaces[i] != false) collect i) as BitArray
+	
+-- 	format "\nFaces: %\n" faces
+	
+-- 	local counter = 1
+-- 	for f in faces where faces[f] do
+-- 	(
+-- 		local elementFaces = polyOp_getElementsUsingFace obj f
+-- 		faces -= elementFaces
+-- 		append elementFacesArray elementFaces
+-- 		counter += 1
+-- 	)
+	
+	local numfaces = polyOp.getNumFaces obj
+	local faces = (for i = 1 to numfaces collect i) as BitArray
 	for f = 1 to numFaces where faces[f] do
 	(
 		local elementFaces = polyOp_getElementsUsingFace obj f
 		faces -= elementFaces
 		append elementFacesArray elementFaces
-	)	
+	)
 )
 
 totalOverlappedFacesArray = #()
@@ -73,10 +104,9 @@ with undo off
 	(
 		max create mode
 		
-		start = timeStamp()
 		selectedObj = selection as array
 		
-		if (selectedObj.count > 0) and (classOf selectedObj[1].baseObject == Editable_Poly)  do
+		if (selectedObj.count == 1) and (classOf selectedObj[1].baseObject == Editable_Poly)  do
 		(
 			
 			mainObj = selectedObj[1]
@@ -88,20 +118,17 @@ with undo off
 						
 			if (hasUVWUnwrapModifier mainObj) then
 			(
-			
 				obj = copy mainObj
-			
 				ChannelInfo.CopyChannel obj 3 1
 				ChannelInfo.PasteChannel obj 1 1
 				ResetXForm obj
 				convertToMesh obj
 				convertToPoly obj
 				
-				
 				elementVertArray = #()
 				
-				getElementFacesArray obj
--- 				format "elementFacesArray: %\n" elementFacesArray
+				getElementFacesArray obj selectedFaces
+				format "elementFacesArray: %\n" elementFacesArray
 				
 				boolFlag = false
 				
@@ -111,10 +138,46 @@ with undo off
 				elementFacesArray_Count = elementFacesArray.count
 				
 				elementFaceVertsArray = for i = 1 to elementFacesArray_Count collect (polyOp_getVertsUsingFace obj elementFacesArray[i])
--- 				format "\nelementFaceVertsArray: %\n" elementFaceVertsArray
+				format "\nelementFaceVertsArray: %\n" elementFaceVertsArray
 				
 				polyOp_getVert = polyOp.getVert
 				
+				start = timeStamp()
+
+-- 				for i = 1 to elementFaceVertsArray.count do
+-- 				(
+-- 					local minX = 1e9
+-- 					local minY = 1e9
+-- 					local maxX = -1e9
+-- 					local maxY = -1e9
+-- 					
+-- 					local vertPos = for v in elementFaceVertsArray[i] collect polyOp_getVert obj v	
+-- 				)
+-- 				print vertPos
+					
+-- 				for i = 1 to elementFacesArray.count do
+-- 				(
+-- 					local minX = 1e9
+-- 					local minY = 1e9
+-- 					local maxX = -1e9
+-- 					local maxY = -1e9
+-- 					
+-- 					local verts = elementFaceVertsArray[i]
+-- 					
+-- 					for v in verts do
+-- 					(
+-- 						local vertPos = polyOp_getVert obj v
+-- 						local vx = vertPos.x
+-- 						local vy = vertPos.y
+-- 						
+-- 						if vx < minX then minX = vx
+-- 						if vy < minY then minY = vy
+-- 						if vx > maxX then maxX = vx							
+-- 						if vy > maxY then maxY = vy
+-- 					)
+-- 					
+-- 					append elementVertArray #(minX, minY, maxX, maxY)
+-- 				)
 				
 				
 				for i = 1 to elementFaceVertsArray.count do
@@ -133,8 +196,8 @@ with undo off
 					)
 					append elementVertArray #(minPoint.x, minPoint.y, maxPoint.x, maxPoint.y)
 				)
-				
--- 				format "\nelementVertArray: %" elementVertArray
+-- 				
+				format "\nelementVertArray: %" elementVertArray
 				
 				for i = 1 to elementVertArray.count do
 				(
@@ -150,7 +213,7 @@ with undo off
 					)
 				)
 				
--- 				format "\nTotal overlapped array: %" totalOverlappedFacesArray
+				format "\nTotal overlapped array: %" totalOverlappedFacesArray
 			
 				delete obj
 			
@@ -173,28 +236,3 @@ with undo off
 	)
 )
 max modify mode
-*/
-
-/*
--- Testing for materials. Kindly ignore
-obj = $
-currMat = obj.material
-currMat1 = copy currMat
-
-multiMat = MultiMaterial numsubs: 2
-multiMat.materialList[1] = currMat
-multiMat.materialList[2] = currMat1
-
-
-unwrapMod =  obj.modifiers[obj.modifiers.count]
-selectedFaces = unwrapMod.getSelectedFaces()
-
--- format "\nSelected faces: %" selectedFaces
-
-for f in selectedFaces do
-(
-	polyop.setFaceMatID obj f 2
-)
-
-obj.material = multiMat
-*/
