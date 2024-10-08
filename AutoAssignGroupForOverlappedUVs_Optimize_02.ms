@@ -6,19 +6,10 @@ fn hasUVWUnwrapModifier obj =
 
 fn doesEdgeIntersect currElementVertMinMax nextElementVertMinMax = 
 (	
-	currMinX = currElementVertMinMax[1]
-	currMinY = currElementVertMinMax[2]
-	currMaxX = currElementVertMinMax[3]
-	currMaxY = currElementVertMinMax[4]
-	
-	nextMinX = nextElementVertMinMax[1]
-	nextMinY = nextElementVertMinMax[2]
-	nextMaxX = nextElementVertMinMax[3]
-	nextMaxY = nextElementVertMinMax[4]
-	
-	xOverlap = (currMaxX >= nextMinX) and (currMinX <= nextMaxX)
-	yOverlap = (currMaxY >= nextMinY) and (currMinY <= nextMaxY)
-	
+
+	local xOverlap = (currElementVertMinMax[3] >= nextElementVertMinMax[1]) and (currElementVertMinMax[1] <= nextElementVertMinMax[3])
+	local yOverlap = (currElementVertMinMax[4] >= nextElementVertMinMax[2]) and (currElementVertMinMax[2] <= nextElementVertMinMax[4])
+
 	return (xOverlap and yOverlap)
 )
 
