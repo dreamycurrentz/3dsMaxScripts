@@ -1,0 +1,51 @@
+fn hasUVWUnwrapModifier obj =
+(
+	(classOf obj.modifiers[obj.modifiers.count] == Unwrap_UVW)
+)
+
+with undo off
+(
+	with redraw off
+	(
+		max create mode
+		
+		selectedObj = selection as array
+
+		if ((selectedObj.count == 1) and (classOf selectedObj[1].baseObject == Editable_Poly)) do
+		(
+			obj = selectedObj[1]
+			
+			if (hasUVWUnwrapModifier obj) then
+			(
+				
+				local unwrapMod =  obj.modifiers[obj.modifiers.count]
+				local selectedFaces = unwrapMod.getSelectedFaces()
+				
+				start = timeStamp()
+				
+				local selectedEdges = #()
+
+				local selectedEdges = for f in selectedFaces collect
+				(
+					unwrapMod.selectFaces #{f}
+					unwrapMod.faceToEdgeSelect()
+					unwrapMod.getSelectedEdges()
+				)
+				
+				unwrapMod.selectFaces #{}
+ 				
+-- 				print selectedFaces
+				
+				local selectedVertices = for f in selectedFaces collect
+				(
+					unwrapMod.selectFaces #{f}
+					unwrapMod.faceToVertSelect()
+					unwrapMod.getSelectedVertices()
+				)
+				end = timeStamp()
+				
+				format "\nProcessing took % seconds\n" ((end - start) / 1000.0)
+			)
+		)
+	)
+)	
