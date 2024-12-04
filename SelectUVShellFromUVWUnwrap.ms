@@ -3,30 +3,35 @@ fn hasUVWUnwrapModifier obj =
 	(classOf obj.modifiers[obj.modifiers.count] == Unwrap_UVW)
 )
 
+fn GetSelectedFaces unwrapMod = 
+(
+	(unwrapMod.getSelectedFaces())
+)
+
 fn GetUVShell unwrapMod selectedFaces numFaces =
 (	
-	local unwrapMod_selectFaces = unwrapMod.selectFaces
-	local unwrapMod_getSelectedFaces = unwrapMod.getSelectedFaces
 	
 	local selectedFacesArray = selectedFaces as Array
 	local uvShells = #()
+	
+	local unwrapMod_selectFaces = unwrapMod.selectFaces
+	
 	
 	while (selectedFacesArray.count > 0) do
 	(
 		unwrapMod_selectFaces #{selectedFacesArray[1]}
 		unwrapMod.selectElement()
 		
-		local selectedElementFaces = unwrapMod_getSelectedFaces()
-
+		local selectedElementFaces = GetSelectedFaces unwrapMod
 		append uvShells selectedElementFaces
 
 		for ele in selectedElementFaces do
 		(
-			index = findItem selectedFacesArray ele
+			local index = findItem selectedFacesArray ele
 			deleteItem selectedFacesArray index
 		)
 	)
-	unwrapMod_selectFaces selectedFaces
+	unwrapMod.selectFaces selectedFaces
 	uvShells
 )
 
