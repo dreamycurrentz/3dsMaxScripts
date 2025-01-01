@@ -1,5 +1,7 @@
 fileIn "C:\\Users\\akash\\Desktop\\MaxScriptsPractice\\UVMaster\\UVMaster_01.ms"
 
+-- This script calculates the overlappedFaces based on bounding box and based on edge-edge intersection calculations.
+
 struct OverlappedUV
 (
 	selectedFaces = #(),
@@ -8,6 +10,8 @@ struct OverlappedUV
 	overlappedUVShellArray = #(),
 	selectedFacesBitArray = #(),
 	uvShellEdgeArray = #(),
+	edgeToVertArray = #(),
+	vertToVertPositionArray = #(),
 	
 	fn GetAreaUVShells unwrapMod uvShells =
 	(
@@ -61,12 +65,6 @@ struct OverlappedUV
 		
 		-- Variable to store all the faces in a bitarray
 		selectedFacesBitArray = #{}
-		
-		-- Loop through the uvShells array and add the bitarray to selectedFacesBitArray 
-		for element in uvShells do join selectedFacesBitArray element
-			
-		-- Select the faces in selectedFacesBitArray
-		unwrapMod.selectFaces selectedFacesBitArray
 					
 		-- Return UV shells
 		return uvShells
@@ -174,7 +172,6 @@ struct OverlappedUV
 	-- Assign groups for overlapped faces by looping overlappedUVShellArray
 	fn AssignSmoothingGroup unwrapMod =
 	(
-		
 		-- Choose SubObjectLevel 3
 		unwrapMod.setTVSubObjectMode 3
 		
@@ -228,9 +225,6 @@ struct OverlappedUV
 	
 	fn GetUVShellEdgeArray unwrapMod uvShells =
 	(
-		overlappedUVShellEdgeArray = #()
-		
-		format "UVShells; %\n" uvShells
 		for index = 1 to uvShells.count do 
 		(
 			unwrapMod.selectFaces uvShells[index]
@@ -239,20 +233,95 @@ struct OverlappedUV
 			local edgeArray = unwrapMod.getSelectedEdges()
 			append uvShellEdgeArray edgeArray
 		)
-		
 		format "uvShellEdgeArray: %\n" uvShellEdgeArray
+	),
+	
+	fn GetUVShellEdgeToVertArray unwrapMod =
+	(
+		local totalPolygons = unwrapMod.numberPolygons()
+		unwrapMod.selectFaces #{1..totalPolygons}
+		unwrapMod.faceToEdgeSelect()
+		
+		local totalEdges = unwrapMod.getSelectedEdges()
+		local totalEdgesCount = totalEdges.numberSet
+-- 		format "totalEdges: %\n" totalEdges
+-- 		format "totalEdgesCount: %\n" totalEdgesCount
+		
+		for edgeIndex = 1 to totalEdgesCount do
+		(
+			unwrapMod.selectEdges #{edgeIndex}
+			unwrapMod.edgeToVertSelect()
+			local vertArray = (unwrapMod.getSelectedVertices()) as array
+			append edgeToVertArray vertArray
+-- 			format "edgeIndex: %\n" edgeIndex
+-- 			format "uvShellVertArray: %\n" edgeToVertArray[edgeIndex]
+		)
+		
+		format "edgeToVertArray: %\n" edgeToVertArray
+	),
+	
+	fn GetVertToVertArray unwrapMod = 
+	(
+		local totalVertices = unwrapMod.NumberVertices()
+		vertToVertPositionArray = for i = 1 to totalVertices collect (unwrapMod.getVertexPosition 0 i)
+		format "vertToVertPositionArray: %\n" vertToVertPositionArray
+	),
+	
+	fn checkIntersection currEdge nextEdge =
+	(
+		-- Cache vertex positions for the current edge
+		local currEdgeVerts = edgeToVertArray[currEdge]
+		local nextEdgeVerts = edgeToVertArray[nextEdge]
+
+		-- Extract x, y coordinates
+		x1 = vertToVertPositionArray[currEdgeVerts[1]].x
+		y1 = vertToVertPositionArray[currEdgeVerts[1]].y
+		x2 = vertToVertPositionArray[currEdgeVerts[2]].x
+		y2 = vertToVertPositionArray[currEdgeVerts[2]].y
+		
+		x3 = vertToVertPositionArray[nextEdgeVerts[1]].x
+		y3 = vertToVertPositionArray[nextEdgeVerts[1]].y
+		x4 = vertToVertPositionArray[nextEdgeVerts[2]].x
+		y4 = vertToVertPositionArray[nextEdgeVerts[2]].y
+		
+		-- Prefetch calculations
+		diff1 = y1 - y3
+		diff2 = x1 - x3
+		diff3 = x1 - x2
+		diff4 = y3 - y4
+		diff5 = y1 - y2
+		diff6 = x3 - x4
+		
+		-- Compute denominator
+		denom = (diff3) * (diff4) - (diff5) * (diff6)
+		
+		-- Calculate t and u
+		t = (((diff2)*(diff4)) - ((diff1)*(diff6))) / denom
+		u = -(((diff3)*(diff1)) - ((diff5)*(diff2))) / denom
+		
+		-- Intersection condition	
+		if ((0 <= t and t <= 1) and (0 <= u and u <= 1)) then
+		(
+			return true
+		)
+		else
+		(
+			return false
+		)
 	),
 	
 	fn traverseEdgeElement currElementEdges nextElementEdges = 
 	(
--- 		for currEdge in currElementEdges do
--- 		(
--- 			for nextEdge in nextElementEdges do
--- 			(
--- 				if (checkIntersection currEdge nextEdge) then
--- 					return true
--- 			)
--- 		)
+		for currEdge in currElementEdges do
+		(
+			for nextEdge in nextElementEdges do
+			(
+				if (checkIntersection currEdge nextEdge) then
+				(
+					return true
+				)
+			)
+		)
 		return false
 	),
 	
@@ -266,40 +335,89 @@ struct OverlappedUV
 			(
 				local unwrapMod = obj.modifiers[obj.modifiers.count]
 				
+-- 				unwrapMod.setTVSubObjectMode 2
+-- 				unwrapMod.selectEdges #{23}
+				
+-- 				unwrapMod.setTVSubObjectMode 1
+-- 				unwrapMod.selectVertices #{2,15}
+				
+-- 				/*
 				if(unwrapMod != undefined) do
 				(
 					uvShells = GetUVShellData unwrapMod
+					format "uvShells: %\n" uvShells
 					
 					if(uvShells.count > 0) do
 					(
 						-- Get Element Edges in an array
 						GetUVShellEdgeArray unwrapMod uvShells
 						
--- 						local doesEdgesIntersectBool = false
-		 				for i = 1 to uvShellEdgeArray.count do
+						-- Get Edges to Verts Array
+						GetUVShellEdgeToVertArray unwrapMod
+						
+						-- Get Vert to Vert Pos Array
+						GetVertToVertArray unwrapMod
+						
+-- 						CheckEdgesOverlap()
+						
+						for i = 1 to uvShellEdgeArray.count do
 		 				(
 		 					for j = i + 1 to uvShellEdgeArray.count where i != j do
 		 					(
-		 						doesEdgesIntersectBool = traverseEdgeElement uvShellEdgeArray[i] uvShellEdgeArray[j]
--- 								
--- 		 						if (doesEdgesIntersectBool == true) do
--- 		 						(
--- 		 							format "\nEdge % and % intersects" elementEdgesArray[i] elementEdgesArray[j]
--- 		 						)
+		 						local doesEdgesIntersectBool = traverseEdgeElement uvShellEdgeArray[i] uvShellEdgeArray[j]
+								
+								-- Overlap condition
+		 						if (doesEdgesIntersectBool) do
+		 						(
+									format "Overlaps uvShells[i]: %, uvShells[j]: %\n" uvShells[i] uvShells[j]
+									
+									if (overlappedUVShellIdxArray.count == 0) then
+									(
+										append overlappedUVShellIdxArray #{i,j}
+									)
+									else
+									(
+										breakLoop = false
+										counter = 1
+										
+										for data in overlappedUVShellIdxArray where breakLoop == false do
+										(
+											if (data[i] == 0 and data[j] == 0 and counter >= overlappedUVShellIdxArray.count) then
+											(
+												append overlappedUVShellIdxArray #{i,j}
+												breakLoop = true
+											)
+											else if (data[i] == 1 and data[j] == 0) then
+											(
+												data[j] = 1
+												breakLoop = true
+											)
+											else if (data[i] == 0 and data[j] == 1) then
+											(
+												data[i] = 1
+												breakLoop = true
+											)
+											else if (data[i] == 1 and data[j] == 1) then
+											(
+												breakLoop = true
+											)
+											counter += 1
+										)
+									)
+								)
 		 					)
 		 				)
-
+						format "overlappedUVShellIdxArray: %\n" overlappedUVShellIdxArray
 						
-						
-						
--- 						Get EdgesInAnArray
--- 						Get VertToVertArray
-						
--- 						GetAreaUVShells unwrapMod uvShells
--- 						CheckBoundsOverlap()
--- 						ReplaceIdxArrayWithActualArray uvShells
--- 						AssignSmoothingGroup unwrapMod
+						ReplaceIdxArrayWithActualArray uvShells
+						AssignSmoothingGroup unwrapMod
 					)
+					
+						-- Loop through the uvShells array and add the bitarray to selectedFacesBitArray 
+-- 						for element in uvShells do join selectedFacesBitArray element
+							
+						-- Select the faces in selectedFacesBitArray
+-- 						unwrapMod.selectFaces selectedFacesBitArray
 				)
 			)
 		)
