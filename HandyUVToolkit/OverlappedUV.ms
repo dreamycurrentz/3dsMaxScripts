@@ -1,5 +1,3 @@
-fileIn "C:\\Users\\akash\\Desktop\\MaxScriptsPractice\\UVMaster\\UVMaster_01.ms"
-
 -- This script calculates the overlappedFaces based on bounding box and based on edge-edge intersection calculations.
 
 struct OverlappedUV
@@ -199,6 +197,8 @@ struct OverlappedUV
 	
 	fn CheckUVOverlapBoundingMethod selectedObjects =
 	(
+		print "Entered CheckUVOverlapBoundingMethod"
+		
 		if (selectedObjects.count == 1) do
 		(
 			local obj = selectedObjects[1]
@@ -327,6 +327,7 @@ struct OverlappedUV
 	
 	fn CheckUVOverlapEdgeMethod selectedObjects = 
 	(
+		print "Entered CheckUVOverlapEdgeMethod"
 		if (selectedObjects.count == 1) do
 		(
 			local obj = selectedObjects[1]
@@ -421,10 +422,39 @@ struct OverlappedUV
 				)
 			)
 		)
+	),
+	
+	fn selectOverlappedUV selectedIndex = 
+	(
+		-- Display which option is selected
+        case selectedIndex of
+        (
+			-- Handles Boundingbox calculation
+            1: CheckUVOverlapBoundingMethod (selection as array) 
+			
+			-- Handles Edgebased calculation
+            2: CheckUVOverlapEdgeMethod (selection as array)
+			
+			-- Unhandled case
+			default: format "Unhandled case\n"
+        )
+	),
+	
+	fn offsetUV offsetVal =
+	(
+		if (classOf (modPanel.getCurrentObject()) == Unwrap_UVW) then
+		(
+			local unwrapMod = modPanel.getCurrentObject()
+			unwrapMod.moveSelected offsetVal
+		)
+		else
+		(
+			messageBox "Add UnwrapUVW modifier"
+		)
 	)
 )
 
-overlappedUVInstance = OverlappedUV()
-selectedObjects = (selection as array)
-overlappedUVInstance.CheckUVOverlapEdgeMethod selectedObjects
+-- overlappedUVInstance = OverlappedUV()
+-- selectedObjects = (selection as array)
+-- overlappedUVInstance.CheckUVOverlapEdgeMethod selectedObjects
 -- overlappedUVInstance.CheckUVOverlapBoundingMethod selectedObjects
