@@ -2,27 +2,16 @@
 
 struct OverlappedUV
 (
-	selectedFaces = #(),
-	minMaxData = #(),
-	overlappedUVShellIdxArray = #(),
-	overlappedUVShellArray = #(),
-	selectedFacesBitArray = #(),
-	uvShellEdgeArray = #(),
-	edgeToVertArray = #(),
-	vertToVertPositionArray = #(),
-	
 	fn GetAreaUVShells unwrapMod uvShells =
 	(
 		local x = 0, y = 0, width = 0, height = 0, areaUVW = 0, areaGeom = 0
 
-		if (uvShells.count > 0) do
+		local minMaxDataLocal = for i = 1 to uvShells.count collect
 		(
-			minMaxData = for i = 1 to uvShells.count collect
-			(
-				unwrapMod.getArea uvShells[i] &x &y &width &height &areaUVW &areaGeom
-				#(x, y, width, height)
-			)
+			unwrapMod.getArea uvShells[i] &x &y &width &height &areaUVW &areaGeom
+			#(x, y, width, height)
 		)
+		return minMaxDataLocal
 	),
 	
 	-- Returns UVShell from selectedfaces in an array of bitarrays
@@ -58,11 +47,7 @@ struct OverlappedUV
 					deleteItem selectedFacesArray index
 				)
 			)
-			
 		)
-		
-		-- Variable to store all the faces in a bitarray
-		selectedFacesBitArray = #{}
 					
 		-- Return UV shells
 		return uvShells
@@ -90,10 +75,48 @@ struct OverlappedUV
 		return (GetUVShell unwrapMod selectedFaces totalFaceCount uvShells)
 	),
 	
-	fn CheckBoundsOverlap =
+	fn enterOverlappedUVShellIdxArray overlappedUVShellIdxArray i j = 
+	(
+		if (overlappedUVShellIdxArray.count == 0) then
+		(
+			append overlappedUVShellIdxArray #{i,j}
+		)
+		else
+		(
+			local breakLoop = false
+			local counter = 1
+			
+			for data in overlappedUVShellIdxArray where breakLoop == false do
+			(
+				if (data[i] == 0 and data[j] == 0 and counter >= overlappedUVShellIdxArray.count) then
+				(
+					append overlappedUVShellIdxArray #{i,j}
+					breakLoop = true
+				)
+				else if (data[i] == 1 and data[j] == 0) then
+				(
+					data[j] = 1
+					breakLoop = true
+				)
+				else if (data[i] == 0 and data[j] == 1) then
+				(
+					data[i] = 1
+					breakLoop = true
+				)
+				else if (data[i] == 1 and data[j] == 1) then
+				(
+					breakLoop = true
+				)
+				counter += 1
+			)
+		)
+	),
+	
+	fn CheckBoundsOverlap minMaxData =
 	(
 		local breakLoop = false
 		local counter = 0
+		local overlappedUVShellIdxArray =#()
 		
 		for i = 1 to minMaxData.count do
 		(
@@ -116,59 +139,29 @@ struct OverlappedUV
 				-- Overlap condition
 				if ((right1 > x2) and (x1 < right2) and (bottom1 > y2) and (y1 < bottom2)) do
 				(
-					if (overlappedUVShellIdxArray.count == 0) then
-					(
-						append overlappedUVShellIdxArray #{i,j}
-					)
-					else
-					(
-						breakLoop = false
-						counter = 1
-						
-						for data in overlappedUVShellIdxArray where breakLoop == false do
-						(
-							if (data[i] == 0 and data[j] == 0 and counter >= overlappedUVShellIdxArray.count) then
-							(
-								append overlappedUVShellIdxArray #{i,j}
-								breakLoop = true
-							)
-							else if (data[i] == 1 and data[j] == 0) then
-							(
-								data[j] = 1
-								breakLoop = true
-							)
-							else if (data[i] == 0 and data[j] == 1) then
-							(
-								data[i] = 1
-								breakLoop = true
-							)
-							else if (data[i] == 1 and data[j] == 1) then
-							(
-								breakLoop = true
-							)
-							counter += 1
-						)
-					)
+					overlappedUVShellIdxArray = enterOverlappedUVShellIdxArray overlappedUVShellIdxArray i j
 				)
 			)
 		)
+		return overlappedUVShellIdxArray
 	),
 	
 	
 	-- Replace overlappedUVShellIdxArray with values from uvShells
-	fn ReplaceIdxArrayWithActualArray uvShells =
+	fn ReplaceIdxArrayWithActualArray uvShells overlappedUVShellIdxArray =
 	(
 		-- Collect the array in overlappedUVShellArray
-		overlappedUVShellArray = for overlappedUVShellIdx in overlappedUVShellIdxArray collect
+		local overlappedUVShellArray = for overlappedUVShellIdx in overlappedUVShellIdxArray collect
 		(
 			local newSet = #{}
 			for idx in overlappedUVShellIdx do newSet += uvShells[idx]
 			newSet
 		)
-	),	
+		return overlappedUVShellArray
+	),
 	
 	-- Assign groups for overlapped faces by looping overlappedUVShellArray
-	fn AssignSmoothingGroup unwrapMod =
+	fn AssignSmoothingGroup unwrapMod overlappedUVShellArray =
 	(
 		-- Choose SubObjectLevel 3
 		unwrapMod.setTVSubObjectMode 3
@@ -191,40 +184,12 @@ struct OverlappedUV
 			-- Deselect all the selected faces as it will overlap with the next iteration
 			unwrapMod.selectFaces #{}
 		)
-		
-		unwrapMod.selectFaces selectedFacesBitArray
-	),
-	
-	fn CheckUVOverlapBoundingMethod selectedObjects =
-	(
-		print "Entered CheckUVOverlapBoundingMethod"
-		
-		if (selectedObjects.count == 1) do
-		(
-			local obj = selectedObjects[1]
-			
-			if(((classOf obj.baseObject) == Editable_Poly) and ((classOf obj.modifiers[obj.modifiers.count]) == Unwrap_UVW)) do
-			(
-				local unwrapMod = obj.modifiers[obj.modifiers.count]
-				
-				if(unwrapMod != undefined) do
-				(
-					uvShells = GetUVShellData unwrapMod
-					
-					if(uvShells.count > 0) do
-					(
-						GetAreaUVShells unwrapMod uvShells
-						CheckBoundsOverlap()
-						ReplaceIdxArrayWithActualArray uvShells
-						AssignSmoothingGroup unwrapMod
-					)
-				)
-			)
-		)
+
 	),
 	
 	fn GetUVShellEdgeArray unwrapMod uvShells =
 	(
+		local uvShellEdgeArray = #()
 		for index = 1 to uvShells.count do 
 		(
 			unwrapMod.selectFaces uvShells[index]
@@ -234,6 +199,7 @@ struct OverlappedUV
 			append uvShellEdgeArray edgeArray
 		)
 		format "uvShellEdgeArray: %\n" uvShellEdgeArray
+		return uvShellEdgeArray
 	),
 	
 	fn GetUVShellEdgeToVertArray unwrapMod =
@@ -244,8 +210,8 @@ struct OverlappedUV
 		
 		local totalEdges = unwrapMod.getSelectedEdges()
 		local totalEdgesCount = totalEdges.numberSet
--- 		format "totalEdges: %\n" totalEdges
--- 		format "totalEdgesCount: %\n" totalEdgesCount
+		
+		local edgeToVertArray = #()
 		
 		for edgeIndex = 1 to totalEdgesCount do
 		(
@@ -253,22 +219,23 @@ struct OverlappedUV
 			unwrapMod.edgeToVertSelect()
 			local vertArray = (unwrapMod.getSelectedVertices()) as array
 			append edgeToVertArray vertArray
--- 			format "edgeIndex: %\n" edgeIndex
--- 			format "uvShellVertArray: %\n" edgeToVertArray[edgeIndex]
 		)
 		
 		format "edgeToVertArray: %\n" edgeToVertArray
+		return edgeToVertArray
 	),
 	
 	fn GetVertToVertArray unwrapMod = 
 	(
 		local totalVertices = unwrapMod.NumberVertices()
-		vertToVertPositionArray = for i = 1 to totalVertices collect (unwrapMod.getVertexPosition 0 i)
+		local vertToVertPositionArray = for i = 1 to totalVertices collect (unwrapMod.getVertexPosition 0 i)
 		format "vertToVertPositionArray: %\n" vertToVertPositionArray
+		return vertToVertPositionArray
 	),
 	
-	fn checkIntersection currEdge nextEdge =
+	fn checkIntersection currEdge nextEdge edgeToVertArray vertToVertPositionArray =
 	(
+		
 		-- Cache vertex positions for the current edge
 		local currEdgeVerts = edgeToVertArray[currEdge]
 		local nextEdgeVerts = edgeToVertArray[nextEdge]
@@ -310,13 +277,13 @@ struct OverlappedUV
 		)
 	),
 	
-	fn traverseEdgeElement currElementEdges nextElementEdges = 
+	fn traverseEdgeElement currElementEdges nextElementEdges edgeToVertArray vertToVertPositionArray = 
 	(
 		for currEdge in currElementEdges do
 		(
 			for nextEdge in nextElementEdges do
 			(
-				if (checkIntersection currEdge nextEdge) then
+				if (checkIntersection currEdge nextEdge edgeToVertArray vertToVertPositionArray) then
 				(
 					return true
 				)
@@ -325,9 +292,86 @@ struct OverlappedUV
 		return false
 	),
 	
-	fn CheckUVOverlapEdgeMethod selectedObjects = 
+	fn CheckEdgesOverlap uvShellEdgeArray edgeToVertArray vertToVertPositionArray = 
 	(
-		print "Entered CheckUVOverlapEdgeMethod"
+		local overlappedUVShellIdxArray = #()
+		
+		for i = 1 to uvShellEdgeArray.count do
+		(
+			for j = i + 1 to uvShellEdgeArray.count where i != j do
+			(
+				local doesEdgesIntersectBool = traverseEdgeElement uvShellEdgeArray[i] uvShellEdgeArray[j] edgeToVertArray vertToVertPositionArray
+				
+				-- Overlap condition
+				if (doesEdgesIntersectBool) do
+				(
+					overlappedUVShellIdxArray = enterOverlappedUVShellIdxArray overlappedUVShellIdxArray i j
+				)
+			)
+		)
+		return overlappedUVShellIdxArray
+	),
+	
+-- 	fn CheckUVOverlapBoundingMethod selectedObjects =
+-- 	(
+-- 		print "CheckUVOverlapBoundingMethod"
+-- 		
+-- 		if (selectedObjects.count == 1) do
+-- 		(
+-- 			local obj = selectedObjects[1]
+-- 			
+-- 			if(((classOf obj.baseObject) == Editable_Poly) and ((classOf obj.modifiers[obj.modifiers.count]) == Unwrap_UVW)) do
+-- 			(
+-- 				local unwrapMod = obj.modifiers[obj.modifiers.count]
+-- 				if(unwrapMod != undefined) do
+-- 				(
+-- 					local uvShells = GetUVShellData unwrapMod
+-- 					
+-- 					if(uvShells.count > 0) do
+-- 					(
+-- 						local minMaxData = GetAreaUVShells unwrapMod uvShells
+-- 						local overlappedUVShellIdxArray = CheckBoundsOverlap minMaxData
+-- 						local overlappedUVShellArray = ReplaceIdxArrayWithActualArray uvShells overlappedUVShellIdxArray
+-- 						AssignSmoothingGroup unwrapMod overlappedUVShellArray
+-- 						format "OverlappedUVShells: %" overlappedUVShellArray
+-- 					)
+-- 				)
+-- 			)
+-- 		)
+-- 	),
+	
+-- 	fn CheckUVOverlapEdgeMethod selectedObjects = 
+-- 	(
+-- 		print "CheckUVOverlapEdgeMethod"
+-- 		
+-- 		if (selectedObjects.count == 1) do
+-- 		(
+-- 			local obj = selectedObjects[1]
+-- 			
+-- 			if(((classOf obj.baseObject) == Editable_Poly) and ((classOf obj.modifiers[obj.modifiers.count]) == Unwrap_UVW)) do
+-- 			(
+-- 				local unwrapMod = obj.modifiers[obj.modifiers.count]
+-- 				if(unwrapMod != undefined) do
+-- 				(
+-- 					local uvShells = GetUVShellData unwrapMod
+-- 					format "uvShells: %\n" uvShells
+-- 					
+-- 					if(uvShells.count > 0) do
+-- 					(
+-- 						format "OverlappedUVShells: %" overlappedUVShellArray
+-- 					)
+-- 				)
+-- 			)
+-- 		)
+-- 	),
+	
+	-- Function to check UV overlap using the specified method
+	-- Parameters:
+	-- method: 1 for Bounding Box method, 2 for Edge-based method
+	-- selectedObjects: Array of selected objects
+	fn CheckUVOverlap selectedObjects method =
+	(
+		
 		if (selectedObjects.count == 1) do
 		(
 			local obj = selectedObjects[1]
@@ -335,120 +379,58 @@ struct OverlappedUV
 			if(((classOf obj.baseObject) == Editable_Poly) and ((classOf obj.modifiers[obj.modifiers.count]) == Unwrap_UVW)) do
 			(
 				local unwrapMod = obj.modifiers[obj.modifiers.count]
-				
--- 				unwrapMod.setTVSubObjectMode 2
--- 				unwrapMod.selectEdges #{23}
-				
--- 				unwrapMod.setTVSubObjectMode 1
--- 				unwrapMod.selectVertices #{2,15}
-				
--- 				/*
 				if(unwrapMod != undefined) do
 				(
-					uvShells = GetUVShellData unwrapMod
-					format "uvShells: %\n" uvShells
+					local uvShells = GetUVShellData unwrapMod
 					
 					if(uvShells.count > 0) do
 					(
-						-- Get Element Edges in an array
-						GetUVShellEdgeArray unwrapMod uvShells
 						
-						-- Get Edges to Verts Array
-						GetUVShellEdgeToVertArray unwrapMod
-						
-						-- Get Vert to Vert Pos Array
-						GetVertToVertArray unwrapMod
-						
--- 						CheckEdgesOverlap()
-						
-						for i = 1 to uvShellEdgeArray.count do
-		 				(
-		 					for j = i + 1 to uvShellEdgeArray.count where i != j do
-		 					(
-		 						local doesEdgesIntersectBool = traverseEdgeElement uvShellEdgeArray[i] uvShellEdgeArray[j]
-								
-								-- Overlap condition
-		 						if (doesEdgesIntersectBool) do
-		 						(
-									format "Overlaps uvShells[i]: %, uvShells[j]: %\n" uvShells[i] uvShells[j]
-									
-									if (overlappedUVShellIdxArray.count == 0) then
-									(
-										append overlappedUVShellIdxArray #{i,j}
-									)
-									else
-									(
-										breakLoop = false
-										counter = 1
-										
-										for data in overlappedUVShellIdxArray where breakLoop == false do
-										(
-											if (data[i] == 0 and data[j] == 0 and counter >= overlappedUVShellIdxArray.count) then
-											(
-												append overlappedUVShellIdxArray #{i,j}
-												breakLoop = true
-											)
-											else if (data[i] == 1 and data[j] == 0) then
-											(
-												data[j] = 1
-												breakLoop = true
-											)
-											else if (data[i] == 0 and data[j] == 1) then
-											(
-												data[i] = 1
-												breakLoop = true
-											)
-											else if (data[i] == 1 and data[j] == 1) then
-											(
-												breakLoop = true
-											)
-											counter += 1
-										)
-									)
-								)
-		 					)
-		 				)
-						format "overlappedUVShellIdxArray: %\n" overlappedUVShellIdxArray
-						
-						ReplaceIdxArrayWithActualArray uvShells
-						AssignSmoothingGroup unwrapMod
+						-- Bouding box method
+						if (method == 1) then
+						(
+							local minMaxData = GetAreaUVShells unwrapMod uvShells
+							local overlappedUVShellIdxArray = CheckBoundsOverlap minMaxData
+							local overlappedUVShellArray = ReplaceIdxArrayWithActualArray uvShells overlappedUVShellIdxArray
+							AssignSmoothingGroup unwrapMod overlappedUVShellArray
+							format "Bouding box calculation done\n"
+						)
+						-- Edge-based method
+						else if (method == 2) then
+						(
+							local uvShellEdgeArray = GetUVShellEdgeArray unwrapMod uvShells
+							local edgeToVertArray = GetUVShellEdgeToVertArray unwrapMod
+							local vertToVertPositionArray = GetVertToVertArray unwrapMod
+							local overlappedUVShellIdxArray = CheckEdgesOverlap uvShellEdgeArray edgeToVertArray vertToVertPositionArray
+							local overlappedUVShellArray = ReplaceIdxArrayWithActualArray uvShells overlappedUVShellIdxArray
+							AssignSmoothingGroup unwrapMod overlappedUVShellArray
+							format "Edge method calculation done\n"
+						)
+						else
+						(
+							print "Error with the states\n"
+						)
 					)
-					
-						-- Loop through the uvShells array and add the bitarray to selectedFacesBitArray 
--- 						for element in uvShells do join selectedFacesBitArray element
-							
-						-- Select the faces in selectedFacesBitArray
--- 						unwrapMod.selectFaces selectedFacesBitArray
 				)
 			)
 		)
 	),
 	
-	fn selectOverlappedUV selectedIndex = 
-	(
-		-- Display which option is selected
-        case selectedIndex of
-        (
-			-- Handles Boundingbox calculation
-            1: CheckUVOverlapBoundingMethod (selection as array) 
-			
-			-- Handles Edgebased calculation
-            2: CheckUVOverlapEdgeMethod (selection as array)
-			
-			-- Unhandled case
-			default: format "Unhandled case\n"
-        )
-	),
-	
+	-- Function to offset UV coordinates in the Unwrap_UVW modifier
 	fn offsetUV offsetVal =
 	(
+		-- Check if the currently selected modifier in the ModPanel is an Unwrap_UVW modifier
 		if (classOf (modPanel.getCurrentObject()) == Unwrap_UVW) then
 		(
+			-- Get the currently active modifier which is Unwrap_UVW
 			local unwrapMod = modPanel.getCurrentObject()
+			
+			-- Offset the selected UV elements by the given value (offsetVal)
 			unwrapMod.moveSelected offsetVal
 		)
 		else
 		(
+			-- If no Unwrap_UVW modifier is present, show the message
 			messageBox "Add UnwrapUVW modifier"
 		)
 	)
@@ -456,5 +438,22 @@ struct OverlappedUV
 
 -- overlappedUVInstance = OverlappedUV()
 -- selectedObjects = (selection as array)
--- overlappedUVInstance.CheckUVOverlapEdgeMethod selectedObjects
+-- overlappedUVInstance.selectOverlappedUV 2
 -- overlappedUVInstance.CheckUVOverlapBoundingMethod selectedObjects
+
+
+-- Variable to store all the faces in a bitarray
+-- selectedFacesBitArray = #{}
+-- unwrapMod.selectFaces selectedFacesBitArray
+-- Loop through the uvShells array and add the bitarray to selectedFacesBitArray 
+-- for element in uvShells do join selectedFacesBitArray element
+
+-- Select the faces in selectedFacesBitArray
+-- unwrapMod.selectFaces selectedFacesBitArray
+
+
+-- 				unwrapMod.setTVSubObjectMode 2
+-- 				unwrapMod.selectEdges #{23}
+				
+-- 				unwrapMod.setTVSubObjectMode 1
+-- 				unwrapMod.selectVertices #{2,15}
