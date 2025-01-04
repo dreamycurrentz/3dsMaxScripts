@@ -3,7 +3,7 @@
 -- 1. Bounding box calculation and
 -- 2. Edge based calculation
 
--- It provides additional features such as Offsetting UVs based on the U and V values provided.
+-- It provides additional features such as Offsetting UVs based on the provided U and V values.
 
 struct OverlappedUV
 (
@@ -122,6 +122,8 @@ struct OverlappedUV
 				counter += 1
 			)
 		)
+		
+		return overlappedUVShellIdxArray
 	),
 	
 	fn CheckBoundsOverlap minMaxData =
@@ -170,7 +172,7 @@ struct OverlappedUV
 			-- Iterate through each index in the current bitarray (overlappedUVShellIdx) and add that to newSet
 			for idx in overlappedUVShellIdx do newSet += uvShells[idx]
 			
-			--  -- Return the combined UV shell data for this bitarray
+			-- Return the combined UV shell data for this bitarray
 			newSet
 		)
 		
@@ -348,7 +350,7 @@ struct OverlappedUV
 					(
 						local uvShells = GetUVShellData unwrapMod
 						format "UVShell: %\n" uvShells
-						/*
+-- 						/*
 						if(uvShells.count > 0) do
 						(
 							-- Bouding box method
@@ -358,9 +360,9 @@ struct OverlappedUV
 								local overlappedUVShellIdxArray = CheckBoundsOverlap minMaxData
 								local overlappedUVShellArray = ReplaceIdxArrayWithActualArray uvShells overlappedUVShellIdxArray
 								AssignSmoothingGroup unwrapMod overlappedUVShellArray
-								format "Bouding box calculation done.\n"
+								format "Bounding box calculation done.\n"
 							)
-							-- Edge-based method
+-- 							-- Edge-based method
 							else if (method == 2) then
 							(
 								local uvShellEdgeArray = GetUVShellEdgeArray unwrapMod uvShells
@@ -375,7 +377,8 @@ struct OverlappedUV
 							(
 								print "Error with the states\n"
 							)
-						)*/
+						)
+-- 						*/
 					)
 					
 				)
@@ -408,7 +411,7 @@ struct OverlappedUV
 
 overlappedUVInstance = OverlappedUV()
 selectedObjects = (selection as array)
-overlappedUVInstance.CheckUVOverlap selectedObjects 1
+overlappedUVInstance.CheckUVOverlap selectedObjects 2
 -- overlappedUVInstance.CheckUVOverlapBoundingMethod selectedObjects
 
 
