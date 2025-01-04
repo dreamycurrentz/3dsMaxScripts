@@ -1,14 +1,25 @@
--- This script calculates the overlappedFaces based on bounding box and based on edge-edge intersection calculations.
+-- This script works as a backend code for handling HandyUVToolkit
+-- It's designed to identify and resolve UV map overlaps based on two models,
+-- 1. Bounding box calculation and
+-- 2. Edge based calculation
+
+-- It provides additional features such as Offsetting UVs based on the U and V values provided.
 
 struct OverlappedUV
 (
+	-- Calculates the area data for each UV shell
 	fn GetAreaUVShells unwrapMod uvShells =
 	(
+		-- Declaring position (x, y), dimensions (width, height), areaUVW and areaGeom
 		local x = 0, y = 0, width = 0, height = 0, areaUVW = 0, areaGeom = 0
 
+		-- Collecting minimumMaximumData by processing the uvShells array
 		local minMaxDataLocal = for i = 1 to uvShells.count collect
 		(
+			-- Get the area and bounding box data for the current UV shell
 			unwrapMod.getArea uvShells[i] &x &y &width &height &areaUVW &areaGeom
+				
+			 -- Collect the position (x, y) and dimensions (width, height) of the bounding box
 			#(x, y, width, height)
 		)
 		return minMaxDataLocal
@@ -74,6 +85,7 @@ struct OverlappedUV
 		-- Returns UV shell data
 		return (GetUVShell unwrapMod selectedFaces totalFaceCount uvShells)
 	),
+	
 	
 	fn enterOverlappedUVShellIdxArray overlappedUVShellIdxArray i j = 
 	(
@@ -146,17 +158,23 @@ struct OverlappedUV
 		return overlappedUVShellIdxArray
 	),
 	
-	
-	-- Replace overlappedUVShellIdxArray with values from uvShells
+	-- Replaces the indices in overlappedUVShellIdxArray with the actual UV shell data from uvShells
 	fn ReplaceIdxArrayWithActualArray uvShells overlappedUVShellIdxArray =
 	(
-		-- Collect the array in overlappedUVShellArray
+		-- Initialize a new array to store the converted UV shells
 		local overlappedUVShellArray = for overlappedUVShellIdx in overlappedUVShellIdxArray collect
 		(
+			-- Create a new bitarray to combine UV shell data
 			local newSet = #{}
+			
+			-- Iterate through each index in the current bitarray (overlappedUVShellIdx) and add that to newSet
 			for idx in overlappedUVShellIdx do newSet += uvShells[idx]
+			
+			--  -- Return the combined UV shell data for this bitarray
 			newSet
 		)
+		
+		-- Return the final array of combined UV shell data
 		return overlappedUVShellArray
 	),
 	
@@ -198,7 +216,6 @@ struct OverlappedUV
 			local edgeArray = unwrapMod.getSelectedEdges()
 			append uvShellEdgeArray edgeArray
 		)
-		format "uvShellEdgeArray: %\n" uvShellEdgeArray
 		return uvShellEdgeArray
 	),
 	
@@ -221,7 +238,6 @@ struct OverlappedUV
 			append edgeToVertArray vertArray
 		)
 		
-		format "edgeToVertArray: %\n" edgeToVertArray
 		return edgeToVertArray
 	),
 	
@@ -229,7 +245,6 @@ struct OverlappedUV
 	(
 		local totalVertices = unwrapMod.NumberVertices()
 		local vertToVertPositionArray = for i = 1 to totalVertices collect (unwrapMod.getVertexPosition 0 i)
-		format "vertToVertPositionArray: %\n" vertToVertPositionArray
 		return vertToVertPositionArray
 	),
 	
@@ -312,65 +327,13 @@ struct OverlappedUV
 		return overlappedUVShellIdxArray
 	),
 	
--- 	fn CheckUVOverlapBoundingMethod selectedObjects =
--- 	(
--- 		print "CheckUVOverlapBoundingMethod"
--- 		
--- 		if (selectedObjects.count == 1) do
--- 		(
--- 			local obj = selectedObjects[1]
--- 			
--- 			if(((classOf obj.baseObject) == Editable_Poly) and ((classOf obj.modifiers[obj.modifiers.count]) == Unwrap_UVW)) do
--- 			(
--- 				local unwrapMod = obj.modifiers[obj.modifiers.count]
--- 				if(unwrapMod != undefined) do
--- 				(
--- 					local uvShells = GetUVShellData unwrapMod
--- 					
--- 					if(uvShells.count > 0) do
--- 					(
--- 						local minMaxData = GetAreaUVShells unwrapMod uvShells
--- 						local overlappedUVShellIdxArray = CheckBoundsOverlap minMaxData
--- 						local overlappedUVShellArray = ReplaceIdxArrayWithActualArray uvShells overlappedUVShellIdxArray
--- 						AssignSmoothingGroup unwrapMod overlappedUVShellArray
--- 						format "OverlappedUVShells: %" overlappedUVShellArray
--- 					)
--- 				)
--- 			)
--- 		)
--- 	),
-	
--- 	fn CheckUVOverlapEdgeMethod selectedObjects = 
--- 	(
--- 		print "CheckUVOverlapEdgeMethod"
--- 		
--- 		if (selectedObjects.count == 1) do
--- 		(
--- 			local obj = selectedObjects[1]
--- 			
--- 			if(((classOf obj.baseObject) == Editable_Poly) and ((classOf obj.modifiers[obj.modifiers.count]) == Unwrap_UVW)) do
--- 			(
--- 				local unwrapMod = obj.modifiers[obj.modifiers.count]
--- 				if(unwrapMod != undefined) do
--- 				(
--- 					local uvShells = GetUVShellData unwrapMod
--- 					format "uvShells: %\n" uvShells
--- 					
--- 					if(uvShells.count > 0) do
--- 					(
--- 						format "OverlappedUVShells: %" overlappedUVShellArray
--- 					)
--- 				)
--- 			)
--- 		)
--- 	),
-	
 	-- Function to check UV overlap using the specified method
 	-- Parameters:
 	-- method: 1 for Bounding Box method, 2 for Edge-based method
 	-- selectedObjects: Array of selected objects
 	fn CheckUVOverlap selectedObjects method =
 	(
+		local start = timestamp()
 		
 		if (selectedObjects.count == 1) do
 		(
@@ -381,39 +344,46 @@ struct OverlappedUV
 				local unwrapMod = obj.modifiers[obj.modifiers.count]
 				if(unwrapMod != undefined) do
 				(
-					local uvShells = GetUVShellData unwrapMod
-					
-					if(uvShells.count > 0) do
+					with undo off, redraw off
 					(
-						
-						-- Bouding box method
-						if (method == 1) then
+						local uvShells = GetUVShellData unwrapMod
+						format "UVShell: %\n" uvShells
+						/*
+						if(uvShells.count > 0) do
 						(
-							local minMaxData = GetAreaUVShells unwrapMod uvShells
-							local overlappedUVShellIdxArray = CheckBoundsOverlap minMaxData
-							local overlappedUVShellArray = ReplaceIdxArrayWithActualArray uvShells overlappedUVShellIdxArray
-							AssignSmoothingGroup unwrapMod overlappedUVShellArray
-							format "Bouding box calculation done\n"
-						)
-						-- Edge-based method
-						else if (method == 2) then
-						(
-							local uvShellEdgeArray = GetUVShellEdgeArray unwrapMod uvShells
-							local edgeToVertArray = GetUVShellEdgeToVertArray unwrapMod
-							local vertToVertPositionArray = GetVertToVertArray unwrapMod
-							local overlappedUVShellIdxArray = CheckEdgesOverlap uvShellEdgeArray edgeToVertArray vertToVertPositionArray
-							local overlappedUVShellArray = ReplaceIdxArrayWithActualArray uvShells overlappedUVShellIdxArray
-							AssignSmoothingGroup unwrapMod overlappedUVShellArray
-							format "Edge method calculation done\n"
-						)
-						else
-						(
-							print "Error with the states\n"
-						)
+							-- Bouding box method
+							if (method == 1) then
+							(
+								local minMaxData = GetAreaUVShells unwrapMod uvShells
+								local overlappedUVShellIdxArray = CheckBoundsOverlap minMaxData
+								local overlappedUVShellArray = ReplaceIdxArrayWithActualArray uvShells overlappedUVShellIdxArray
+								AssignSmoothingGroup unwrapMod overlappedUVShellArray
+								format "Bouding box calculation done.\n"
+							)
+							-- Edge-based method
+							else if (method == 2) then
+							(
+								local uvShellEdgeArray = GetUVShellEdgeArray unwrapMod uvShells
+								local edgeToVertArray = GetUVShellEdgeToVertArray unwrapMod
+								local vertToVertPositionArray = GetVertToVertArray unwrapMod
+								local overlappedUVShellIdxArray = CheckEdgesOverlap uvShellEdgeArray edgeToVertArray vertToVertPositionArray
+								local overlappedUVShellArray = ReplaceIdxArrayWithActualArray uvShells overlappedUVShellIdxArray
+								AssignSmoothingGroup unwrapMod overlappedUVShellArray
+								format "Edge method calculation done.\n"
+							)
+							else
+							(
+								print "Error with the states\n"
+							)
+						)*/
 					)
+					
 				)
 			)
 		)
+		
+		local end = timeStamp()
+		format "\nProcessing took % seconds\n" ((end - start) / 1000.0)
 	),
 	
 	-- Function to offset UV coordinates in the Unwrap_UVW modifier
@@ -436,9 +406,9 @@ struct OverlappedUV
 	)
 )
 
--- overlappedUVInstance = OverlappedUV()
--- selectedObjects = (selection as array)
--- overlappedUVInstance.selectOverlappedUV 2
+overlappedUVInstance = OverlappedUV()
+selectedObjects = (selection as array)
+overlappedUVInstance.CheckUVOverlap selectedObjects 1
 -- overlappedUVInstance.CheckUVOverlapBoundingMethod selectedObjects
 
 
