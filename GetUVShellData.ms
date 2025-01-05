@@ -3,13 +3,20 @@
 -- uvShell= #(#{},#{}..)
 -- If none is selected then it selects all the faces and returns the UVShells.
 
-(
+-- This script contains all the functios needed for unwrapMod which will be used in other scripts
+
 	struct UVMaster
 	(
+		-- Check if the object is of type Editable_Poly and Unwrap_UVW modifier applied on top of it
+		fn IsValidObjectClass obj =
+		(
+			return ((classOf obj.baseObject) == Editable_Poly)
+		),
+		
 		-- Checks if the Unwrap_UVW modifier is applied and returns a boolean
 		fn HasUVWUnwrapModifier obj =
 		(
-			return (classOf obj.modifiers[obj.modifiers.count] == Unwrap_UVW)
+			return ((classOf obj.modifiers[obj.modifiers.count]) == Unwrap_UVW)
 		),
 		
 		-- Gets the selected faces and returns it
@@ -77,7 +84,10 @@
 			return uvShells
 		),
 		
-		-- Function to get GetUVShellData
+		
+		-- Function to get UVShellData from the selected faces and stores in an array of bitarrays. 
+		-- Here's how the return type looks like,
+		-- uvShell= #(#{},#{}..)
 		fn GetUVShellData unwrapMod =
 		(
 			-- Get selected faces
@@ -96,44 +106,3 @@
 			return (GetUVShell unwrapMod selectedFaces totalFaceCount uvShells)
 		)
 	)
-
-
-	with undo off, with redraw off
-	(
-		-- Get selection as array
-		local selectedObjects = selection as array
-		
-		-- Process only if one object is selected and that object is of type Editable_Poly
-		if (selectedObjects.count == 1) and (classOf selectedObjects[1].baseObject == Editable_Poly)  do
-		(
-			-- Start timestamp
-			local start = timestamp()
-			
-			-- Get the first selected object
-			local obj = selectedObjects[1]
-			
-			-- Create an instance of the struct UVMaster
-			local uvMasterInstance = UVMaster()
-			
-			-- If Unwrap_UVW Modifier is not present then add it
-			if not (uvMasterInstance.HasUVWUnwrapModifier obj) then
-			(
-				local unwrapMod = Unwrap_UVW()
-				addModifier obj unwrapMod
-			)
-			-- If Unwrap_UVW Modifier is present then get the top most modifier which should be Unwrap_UVW
-			else
-			(
-				local unwrapMod = obj.modifiers[obj.modifiers.count]
-			)
-			
-			-- GetUVShellData is being called from uvMasterInstance
-			local uvShells = uvMasterInstance.GetUVShellData unwrapMod
-			format "uvShells: %\n" uvShells
-			
-			-- End timestamp
-			local end = timestamp()
-			format "\nProcessing took % seconds\n" ((end - start) / 1000.0)
-		)
-	)
-)
