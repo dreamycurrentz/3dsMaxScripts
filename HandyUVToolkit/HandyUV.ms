@@ -1,6 +1,6 @@
 try (DestroyDialog handyUVRollout) catch()
 
-fileIn "C:\\Users\\akash\\Desktop\\MaxScriptsPractice\\OptimizeCodeTry_01\\OptimizeCodeTry_02_07.ms"
+fileIn "C:\\Users\\akash\\Desktop\\MaxScriptsPractice\\OptimizeCodeTry_01\\OptimizeCodeTry_02_08.ms"
 
 Rollout handyUVRollout "Handy UV"
 (
@@ -17,24 +17,6 @@ Rollout handyUVRollout "Handy UV"
 	(
 		radioButtons rbOptions "Calculation methods:" labels:#("Bounds Calculation", "Edge Calculation") default:1 align:#left offset:[0,2.5]
 		button btn_selectOverlapped_UV "Select Overlapped UVs" width:150 align:#left
-		
-		button btn_offsetOverlapped_UV "Offset UVs" width:85 height:40 align:#left offset:[0,5]
-		spinner spn_offset_U1 "U" width:50 range:[-15,15,1] align:#right offset:[0,-43]
-		spinner spn_offset_V1 "V" width:50 range:[-15,15,1] align:#right
-	)
-	
-	--Used for debug
-	on handyUVRollout open do
-	(
--- 		btn_selectOverlapped_UV.width = handyUVRollout.width - 40
-		
--- 		local pos = btn_offset_U.pos
---         local width = btn_offset_U.width 
---         local height = btn_offset_U.height
---         
---         format "Button Position: %\n" pos
---         format "Button Width: %\n" width
---         format "Button Height: %\n" height
 	)
 	
 	on btn_offset_U pressed do
@@ -59,9 +41,20 @@ Rollout handyUVRollout "Handy UV"
 	
 	on btn_selectOverlapped_UV pressed do
 	(
-		overlappedUVInstance.selectOverlappedUV rbOptions.state
+		-- Switch case to handle the radio buttons
+		case rbOptions.state of
+        (
+			-- Use BoundingBox method to check for UV overlaps
+            1: overlappedUVInstance.CheckUVOverlap (selection as array) rbOptions.state
+			
+			-- Use Edge-based method to check for UV overlaps
+            2: overlappedUVInstance.CheckUVOverlap (selection as array) rbOptions.state
+			
+			-- Default case: Handle unexpected or unimplemented cases
+			default: format "Unhandled case\n"
+        )
 	)
 )
 
-CreateDialog handyUVRollout height: 250 width: 175
+CreateDialog handyUVRollout height: 195 width: 175
 overlappedUVInstance = OverlappedUV()
