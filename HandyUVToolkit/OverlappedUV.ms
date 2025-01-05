@@ -86,77 +86,102 @@ struct OverlappedUV
 		return (GetUVShell unwrapMod selectedFaces totalFaceCount uvShells)
 	),
 	
-	
+	-- Adds or udpates UV Shell index pairs in overlappedUVShellIdxArray containing indices i and j
 	fn enterOverlappedUVShellIdxArray overlappedUVShellIdxArray i j = 
 	(
+		-- If the overlappedUVShellIdxArray is empty then we are directly adding to the array
 		if (overlappedUVShellIdxArray.count == 0) then
 		(
 			append overlappedUVShellIdxArray #{i,j}
 		)
 		else
 		(
+			-- Variable to break out of the loop when a condition is satisfied
 			local breakLoop = false
+			
+			-- Counter to track iterations
 			local counter = 1
 			
+			-- Iterate through each bitarray(data) in overlappedUVShellIdxArray while breakLoop is false
 			for data in overlappedUVShellIdxArray where breakLoop == false do
 			(
+				-- Case 1: Both indices i and j are not present in the current bitarray, and we have checked all bitarrays
 				if (data[i] == 0 and data[j] == 0 and counter >= overlappedUVShellIdxArray.count) then
 				(
+					-- Add a new bitarray containing indices i and j to overlappedUVShellIdxArray
 					append overlappedUVShellIdxArray #{i,j}
+					
+					-- Break the loop
 					breakLoop = true
 				)
+				-- Case 2: Index i is present but j is not
 				else if (data[i] == 1 and data[j] == 0) then
 				(
+					-- Add index j to the current bitarray
 					data[j] = 1
+					
+					-- Break the loop
 					breakLoop = true
 				)
+				-- Case 3: Index j is present but i is not
 				else if (data[i] == 0 and data[j] == 1) then
 				(
+					-- Add index i to the current bitarray
 					data[i] = 1
+					-- Break the loop
 					breakLoop = true
 				)
+				-- Case 4: Both indices i and j are already present in the current bitarray
 				else if (data[i] == 1 and data[j] == 1) then
 				(
+					-- Simply break the loop as no changes are needed
 					breakLoop = true
 				)
+				-- Increment the counter after processing the current bitarray
 				counter += 1
 			)
 		)
-		
+		-- Return the updated overlappedUVShellIdxArray
 		return overlappedUVShellIdxArray
 	),
 	
+	-- Function to check if UV bounds overlap and return an array of overlapping UV shell index pairs
 	fn CheckBoundsOverlap minMaxData =
 	(
-		local breakLoop = false
-		local counter = 0
+		-- Initialize an empty array to store overlapping UV shell index pairs
 		local overlappedUVShellIdxArray =#()
 		
+		-- Outer loop to iterate each item in minMaxData
 		for i = 1 to minMaxData.count do
 		(
-			local x1 = minMaxData[i][1]
-			local y1 = minMaxData[i][2]
-			local width1 = minMaxData[i][3]
-			local height1 = minMaxData[i][4]
-			local right1 = x1 + width1
-			local bottom1 = y1 + height1
+			-- Extract the bounding box properties of the current item
+			local x1 = minMaxData[i][1]				-- Minimum X-coordinate position
+			local y1 = minMaxData[i][2]				-- Minimum Y-coordinate position
+			local width1 = minMaxData[i][3]			-- Width of the bounding box
+			local height1 = minMaxData[i][4]		-- Height of the boudning box
+			local right1 = x1 + width1				-- Maximum X-coordinate position
+			local top1 = y1 + height1				-- Maximum Y-coordinate position
 			
+			-- Inner loop to compare the current item with all subsequent items
 			for j = i + 1 to minMaxData.count do
 			(
-				local x2 = minMaxData[j][1]
-				local y2 = minMaxData[j][2]
-				local width2 = minMaxData[j][3]
-				local height2 = minMaxData[j][4]
-				local right2 = x2 + width2
-				local bottom2 = y2 + height2
+				-- Extract the bounding box properties for the comparison item
+				local x2 = minMaxData[j][1]			-- Minimum X-coordinate position
+				local y2 = minMaxData[j][2]			-- Minimum Y-coordinate position
+				local width2 = minMaxData[j][3]		-- Width of the bounding box
+				local height2 = minMaxData[j][4]	-- Height of the boudning box
+				local right2 = x2 + width2			-- Maximum X-coordinate position
+				local top2 = y2 + height2			-- Maximum Y-coordinate position
 				
-				-- Overlap condition
-				if ((right1 > x2) and (x1 < right2) and (bottom1 > y2) and (y1 < bottom2)) do
+				-- Check if the two bounding boxes overlap
+				if ((right1 > x2) and (x1 < right2) and (top1 > y2) and (y1 < top2)) do
 				(
+					-- If overlap is detected, add the indices i and j to overlappedUVShellIdxArray
 					overlappedUVShellIdxArray = enterOverlappedUVShellIdxArray overlappedUVShellIdxArray i j
 				)
 			)
 		)
+		-- Return the array of overlapping UV shell index pairs
 		return overlappedUVShellIdxArray
 	),
 	
@@ -207,68 +232,105 @@ struct OverlappedUV
 
 	),
 	
+	-- Function to generate an array of edge selections for each UV shell
 	fn GetUVShellEdgeArray unwrapMod uvShells =
 	(
+		-- Initialize an empty array to store edges based on each UV Shell
 		local uvShellEdgeArray = #()
+		
+		--Iterate through each UV shell in the provided uvShells array
 		for index = 1 to uvShells.count do 
 		(
+			-- Select the faces of the current UV shell
 			unwrapMod.selectFaces uvShells[index]
+			
+			--Convert the selected faces into selected edges
 			unwrapMod.faceToEdgeSelect()
 			
+			-- Retrieve the selected edges as a bitarray
 			local edgeArray = unwrapMod.getSelectedEdges()
+			
+			-- Append the edges for the current UV shell to the uvShellEdgeArray
 			append uvShellEdgeArray edgeArray
 		)
+		-- Return the array containing edge selections for all UV shells
 		return uvShellEdgeArray
 	),
 	
+	-- Function to map each edge to its respective vertices
 	fn GetUVShellEdgeToVertArray unwrapMod =
 	(
+		-- Get the total number of polygons in the UV shell
 		local totalPolygons = unwrapMod.numberPolygons()
+		
+		-- Select all faces in the UV shell
 		unwrapMod.selectFaces #{1..totalPolygons}
+		
+		-- Convert the selected faces into selected edges
 		unwrapMod.faceToEdgeSelect()
 		
+		-- Get all the edges in a bitarray
 		local totalEdges = unwrapMod.getSelectedEdges()
+		
+		-- Get the total number of edges
 		local totalEdgesCount = totalEdges.numberSet
 		
+		-- Initialize an empty array to store the vertex data for each edge
 		local edgeToVertArray = #()
 		
+		-- Loop through each edge in the selection (totalEdgesCount)
 		for edgeIndex = 1 to totalEdgesCount do
 		(
+			-- Select the current edge
 			unwrapMod.selectEdges #{edgeIndex}
+			\
+			-- Convert the selected edge into its corresponding vertices
 			unwrapMod.edgeToVertSelect()
+			
+			-- Get the selected vertices as an array 
 			local vertArray = (unwrapMod.getSelectedVertices()) as array
+				
+			-- Append the vertex array for the current edge to edgeToVertArray
 			append edgeToVertArray vertArray
 		)
 		
+		-- Return the array containing vertex mappings for all edges in the UV shell
 		return edgeToVertArray
 	),
 	
+	-- Function to retrieve the position data of all vertices
 	fn GetVertToVertArray unwrapMod = 
 	(
+		-- Get the total number of vertices in the UV shell
 		local totalVertices = unwrapMod.NumberVertices()
+		
+		-- Collecting vertToVertPositionArray by iterating all vertices and getting its position
 		local vertToVertPositionArray = for i = 1 to totalVertices collect (unwrapMod.getVertexPosition 0 i)
+		
+		-- Return the array containing the positions of all vertices
 		return vertToVertPositionArray
 	),
 	
+	-- Function to check if two edges intersect in the UV space
 	fn checkIntersection currEdge nextEdge edgeToVertArray vertToVertPositionArray =
 	(
-		
-		-- Cache vertex positions for the current edge
+		-- Get the vertex positions of the current edge and the next edge from edgeToVertArray array
 		local currEdgeVerts = edgeToVertArray[currEdge]
 		local nextEdgeVerts = edgeToVertArray[nextEdge]
 
-		-- Extract x, y coordinates
+		-- Get x and y coordinates of the vertices for the current edge x1, y1, x2, y2
 		x1 = vertToVertPositionArray[currEdgeVerts[1]].x
 		y1 = vertToVertPositionArray[currEdgeVerts[1]].y
 		x2 = vertToVertPositionArray[currEdgeVerts[2]].x
 		y2 = vertToVertPositionArray[currEdgeVerts[2]].y
 		
+		-- Get x and y coordinates of the vertices for the next edge x3, y3, x4, y4
 		x3 = vertToVertPositionArray[nextEdgeVerts[1]].x
 		y3 = vertToVertPositionArray[nextEdgeVerts[1]].y
 		x4 = vertToVertPositionArray[nextEdgeVerts[2]].x
 		y4 = vertToVertPositionArray[nextEdgeVerts[2]].y
 		
-		-- Prefetch calculations
+		-- Precompute differences for calculating intersection
 		diff1 = y1 - y3
 		diff2 = x1 - x3
 		diff3 = x1 - x2
@@ -276,100 +338,128 @@ struct OverlappedUV
 		diff5 = y1 - y2
 		diff6 = x3 - x4
 		
-		-- Compute denominator
+		-- Precompute denominator
 		denom = (diff3) * (diff4) - (diff5) * (diff6)
 		
-		-- Calculate t and u
+		-- Calculate t and u values
 		t = (((diff2)*(diff4)) - ((diff1)*(diff6))) / denom
 		u = -(((diff3)*(diff1)) - ((diff5)*(diff2))) / denom
 		
-		-- Intersection condition	
+		-- Intersection condition: both t and u must be in the range [0,1]
 		if ((0 <= t and t <= 1) and (0 <= u and u <= 1)) then
 		(
+			-- Edges intersect
 			return true
 		)
 		else
 		(
+			-- No intersection
 			return false
 		)
 	),
 	
+	-- Function to traverse through edges of two UV shell elements and check for intersections
 	fn traverseEdgeElement currElementEdges nextElementEdges edgeToVertArray vertToVertPositionArray = 
 	(
+		-- Iterate over each edge in the current UVShell element
 		for currEdge in currElementEdges do
 		(
+			-- Check against each edge in the next UVShell element
 			for nextEdge in nextElementEdges do
 			(
+				-- If edges intersect, return true
 				if (checkIntersection currEdge nextEdge edgeToVertArray vertToVertPositionArray) then
 				(
 					return true
 				)
 			)
 		)
+		-- Return false when no intersection found
 		return false
 	),
 	
+	-- Function to check for overlapping edges among UV shells
 	fn CheckEdgesOverlap uvShellEdgeArray edgeToVertArray vertToVertPositionArray = 
 	(
+		-- Array to store overlapping UV shell indices
 		local overlappedUVShellIdxArray = #()
 		
+		-- Iterate over each UV shell
 		for i = 1 to uvShellEdgeArray.count do
 		(
+			-- Compare with the subsequent UV shells
 			for j = i + 1 to uvShellEdgeArray.count where i != j do
 			(
+				-- Check if any edges intersect
 				local doesEdgesIntersectBool = traverseEdgeElement uvShellEdgeArray[i] uvShellEdgeArray[j] edgeToVertArray vertToVertPositionArray
 				
-				-- Overlap condition
+				-- If edges intersect, add the indices to the overlapped array
 				if (doesEdgesIntersectBool) do
 				(
 					overlappedUVShellIdxArray = enterOverlappedUVShellIdxArray overlappedUVShellIdxArray i j
 				)
 			)
 		)
+		-- Return array of overlapping UV shell indices
 		return overlappedUVShellIdxArray
 	),
 	
-	-- Function to check UV overlap using the specified method
+	-- Function to check UV overlap using specified methods (Bounding box or Edge-based)
 	-- Parameters:
 	-- method: 1 for Bounding Box method, 2 for Edge-based method
 	-- selectedObjects: Array of selected objects
 	fn CheckUVOverlap selectedObjects method =
 	(
+		-- Record the start of the time
 		local start = timestamp()
 		
+		-- Ensure only one object is selected
 		if (selectedObjects.count == 1) do
 		(
 			local obj = selectedObjects[1]
-			
+		
+			-- Ensure the object is an Editable Poly with an Unwrap_UVW modifier
 			if(((classOf obj.baseObject) == Editable_Poly) and ((classOf obj.modifiers[obj.modifiers.count]) == Unwrap_UVW)) do
 			(
 				local unwrapMod = obj.modifiers[obj.modifiers.count]
 				if(unwrapMod != undefined) do
 				(
+					-- Disable undo and redraw for performance
 					with undo off, redraw off
 					(
+						-- Retrieve UV shell data
 						local uvShells = GetUVShellData unwrapMod
-						format "UVShell: %\n" uvShells
--- 						/*
+						
+						-- If UV shells exist then process the below code
 						if(uvShells.count > 0) do
 						(
-							-- Bouding box method
+							-- Bounding box method
 							if (method == 1) then
 							(
+								-- Get minMaxData for the selected UVshells
 								local minMaxData = GetAreaUVShells unwrapMod uvShells
+								-- Check UVshells for overlap and return the overlapping indices as an array
 								local overlappedUVShellIdxArray = CheckBoundsOverlap minMaxData
+								-- Replace the Indices array with actual values
 								local overlappedUVShellArray = ReplaceIdxArrayWithActualArray uvShells overlappedUVShellIdxArray
+								-- Assign smoothing group for the overlapped UV shells based on overlappedUVShellArray
 								AssignSmoothingGroup unwrapMod overlappedUVShellArray
 								format "Bounding box calculation done.\n"
 							)
--- 							-- Edge-based method
+							-- Edge-based method
 							else if (method == 2) then
 							(
+								-- Get the edges for the selected UV shells based on uvShellsArray
 								local uvShellEdgeArray = GetUVShellEdgeArray unwrapMod uvShells
+								-- Get the vertices for the edges and store then in an array
 								local edgeToVertArray = GetUVShellEdgeToVertArray unwrapMod
+								-- Get all vertex positions and store them in an array
 								local vertToVertPositionArray = GetVertToVertArray unwrapMod
+								-- Check UVshells for overlap and return the overlapping indices as an array
 								local overlappedUVShellIdxArray = CheckEdgesOverlap uvShellEdgeArray edgeToVertArray vertToVertPositionArray
+								-- Replace the Indices array with actual values
 								local overlappedUVShellArray = ReplaceIdxArrayWithActualArray uvShells overlappedUVShellIdxArray
+								-- Assign smoothing group for the overlapped UV shells based on overlappedUVShellArray
 								AssignSmoothingGroup unwrapMod overlappedUVShellArray
 								format "Edge method calculation done.\n"
 							)
@@ -378,7 +468,6 @@ struct OverlappedUV
 								print "Error with the states\n"
 							)
 						)
--- 						*/
 					)
 					
 				)
@@ -401,32 +490,10 @@ struct OverlappedUV
 			-- Offset the selected UV elements by the given value (offsetVal)
 			unwrapMod.moveSelected offsetVal
 		)
+		-- If Unwrap_UVW modifier is not present then show the message
 		else
 		(
-			-- If no Unwrap_UVW modifier is present, show the message
 			messageBox "Add UnwrapUVW modifier"
 		)
 	)
 )
-
-overlappedUVInstance = OverlappedUV()
-selectedObjects = (selection as array)
-overlappedUVInstance.CheckUVOverlap selectedObjects 2
--- overlappedUVInstance.CheckUVOverlapBoundingMethod selectedObjects
-
-
--- Variable to store all the faces in a bitarray
--- selectedFacesBitArray = #{}
--- unwrapMod.selectFaces selectedFacesBitArray
--- Loop through the uvShells array and add the bitarray to selectedFacesBitArray 
--- for element in uvShells do join selectedFacesBitArray element
-
--- Select the faces in selectedFacesBitArray
--- unwrapMod.selectFaces selectedFacesBitArray
-
-
--- 				unwrapMod.setTVSubObjectMode 2
--- 				unwrapMod.selectEdges #{23}
-				
--- 				unwrapMod.setTVSubObjectMode 1
--- 				unwrapMod.selectVertices #{2,15}
