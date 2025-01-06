@@ -319,43 +319,37 @@ struct OverlappedUV
 		local nextEdgeVerts = edgeToVertArray[nextEdge]
 
 		-- Get x and y coordinates of the vertices for the current edge x1, y1, x2, y2
-		x1 = vertToVertPositionArray[currEdgeVerts[1]].x
-		y1 = vertToVertPositionArray[currEdgeVerts[1]].y
-		x2 = vertToVertPositionArray[currEdgeVerts[2]].x
-		y2 = vertToVertPositionArray[currEdgeVerts[2]].y
+		local x1 = vertToVertPositionArray[currEdgeVerts[1]].x
+		local y1 = vertToVertPositionArray[currEdgeVerts[1]].y
+		local x2 = vertToVertPositionArray[currEdgeVerts[2]].x
+		local y2 = vertToVertPositionArray[currEdgeVerts[2]].y
 		
 		-- Get x and y coordinates of the vertices for the next edge x3, y3, x4, y4
-		x3 = vertToVertPositionArray[nextEdgeVerts[1]].x
-		y3 = vertToVertPositionArray[nextEdgeVerts[1]].y
-		x4 = vertToVertPositionArray[nextEdgeVerts[2]].x
-		y4 = vertToVertPositionArray[nextEdgeVerts[2]].y
+		local x3 = vertToVertPositionArray[nextEdgeVerts[1]].x
+		local y3 = vertToVertPositionArray[nextEdgeVerts[1]].y
+		local x4 = vertToVertPositionArray[nextEdgeVerts[2]].x
+		local y4 = vertToVertPositionArray[nextEdgeVerts[2]].y
 		
 		-- Precompute differences for calculating intersection
-		diff1 = y1 - y3
-		diff2 = x1 - x3
-		diff3 = x1 - x2
-		diff4 = y3 - y4
-		diff5 = y1 - y2
-		diff6 = x3 - x4
+		local diff1 = y1 - y3
+		local diff2 = x1 - x3
+		local diff3 = x1 - x2
+		local diff4 = y3 - y4
+		local diff5 = y1 - y2
+		local diff6 = x3 - x4
 		
 		-- Precompute denominator
-		denom = (diff3) * (diff4) - (diff5) * (diff6)
+		local denom = (diff3) * (diff4) - (diff5) * (diff6)
+		
+		-- Return early if denominator is zero (parallel lines)
+		if (denom == 0) do return false
 		
 		-- Calculate t and u values
-		t = (((diff2)*(diff4)) - ((diff1)*(diff6))) / denom
-		u = -(((diff3)*(diff1)) - ((diff5)*(diff2))) / denom
+		local t = (((diff2)*(diff4)) - ((diff1)*(diff6))) / denom
+		local u = -(((diff3)*(diff1)) - ((diff5)*(diff2))) / denom
 		
 		-- Intersection condition: both t and u must be in the range [0,1]
-		if ((0 <= t and t <= 1) and (0 <= u and u <= 1)) then
-		(
-			-- Edges intersect
-			return true
-		)
-		else
-		(
-			-- No intersection
-			return false
-		)
+		return ((0 <= t and t <= 1) and (0 <= u and u <= 1))
 	),
 	
 	-- Function to traverse through edges of two UV shell elements and check for intersections
@@ -469,13 +463,12 @@ struct OverlappedUV
 							)
 						)
 					)
-					
 				)
 			)
 		)
 		
 		local end = timeStamp()
-		format "\nProcessing took % seconds\n" ((end - start) / 1000.0)
+		format "Processing took % seconds\n" ((end - start) / 1000.0)
 	),
 	
 	-- Function to offset UV coordinates in the Unwrap_UVW modifier
@@ -497,3 +490,6 @@ struct OverlappedUV
 		)
 	)
 )
+
+-- Declare global variable and intialized it with a new instance of overlappedUV struct.
+global overlappedUVInstance = OverlappedUV()
