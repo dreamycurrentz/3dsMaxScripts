@@ -1,6 +1,6 @@
 try (DestroyDialog handyUVRollout) catch()
 
-fileIn "C:\\Users\\akash\\Desktop\\MaxScriptsPractice\\OptimizeCodeTry_01\\OptimizeCodeTry_02_08.ms"
+fileIn "./OverlappedUV.ms"
 
 Rollout handyUVRollout "Handy UV"
 (
@@ -19,26 +19,31 @@ Rollout handyUVRollout "Handy UV"
 		button btn_selectOverlapped_UV "Select Overlapped UVs" width:150 align:#left
 	)
 	
+	-- Offset U button +ve axis
 	on btn_offset_U pressed do
 	(
 		overlappedUVInstance.offsetUV [spn_offset_U.value, 0, 0]
 	)
 	
+	-- Offset U button -ve axis
 	on btn_offset_U rightclick do
 	(
 		overlappedUVInstance.offsetUV [-spn_offset_U.value, 0, 0]
 	)
-	
+
+	-- Offset V button +ve axis
 	on btn_offset_V pressed do
 	(
 		overlappedUVInstance.offsetUV [0, spn_offset_V.value, 0]
 	)
 	
+	-- Offset V button -ve axis
 	on btn_offset_V rightclick do
 	(
 		overlappedUVInstance.offsetUV [0, -spn_offset_V.value, 0]
 	)
 	
+	-- Overlapped UVs selection button
 	on btn_selectOverlapped_UV pressed do
 	(
 		-- Switch case to handle the radio buttons
@@ -57,4 +62,3 @@ Rollout handyUVRollout "Handy UV"
 )
 
 CreateDialog handyUVRollout height: 195 width: 175
-overlappedUVInstance = OverlappedUV()
