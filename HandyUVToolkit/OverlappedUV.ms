@@ -8,82 +8,74 @@
 struct OverlappedUV
 (
 	-- Calculates the area data for each UV shell
-	fn GetAreaUVShells unwrapMod uvShells =
+	fn calculateUVShellAreaData unwrapModifier uvShellArray =
 	(
 		-- Declaring position (x, y), dimensions (width, height), areaUVW and areaGeom
-		local x = 0, y = 0, width = 0, height = 0, areaUVW = 0, areaGeom = 0
+		local xPosition = 0, yPosition = 0, uvShellWidth = 0, uvShellHeight = 0, areaUVW = 0, areaGeometry = 0
 
 		-- Collecting minimumMaximumData by processing the uvShells array
-		local minMaxDataLocal = for i = 1 to uvShells.count collect
+		local boundingBoxData = for uvShellIdx = 1 to uvShellArray.count collect
 		(
 			-- Get the area and bounding box data for the current UV shell
-			unwrapMod.getArea uvShells[i] &x &y &width &height &areaUVW &areaGeom
-				
+			unwrapModifier.getArea uvShellArray[uvShellIdx] &xPosition &yPosition &uvShellWidth &uvShellHeight &areaUVW &areaGeometry
+			
 			 -- Collect the position (x, y) and dimensions (width, height) of the bounding box
-			#(x, y, width, height)
+			#(xPosition, yPosition, uvShellWidth, uvShellHeight)
 		)
-		return minMaxDataLocal
+		return boundingBoxData
 	),
 	
-	-- Returns UVShell from selectedfaces in an array of bitarrays
-	fn GetUVShell unwrapMod selectedFaces numFaces uvShells =
+	-- Function to get UVShell from the selected faces and returns an array of bitarrays.
+	-- Here's how the return type looks like,
+	-- uvShell= #(#{},#{}..)
+	fn GetUVShellsFromSelectedFaces unwrapModifier =
 	(
+		-- Get selected faces
+		local selectedFacesBArr = unwrapModifier.getSelectedFaces()
+		
+		-- Get total Faces in the object
+		local totalFaceCount = unwrapModifier.numberPolygons()
+		
+		-- Variable to store uvShells
+		local uvShellsArr = #()
+		
+		-- If selected Faces is none then select all the faces
+		if selectedFacesBArr.isEmpty do selectedFacesBArr = #{1..totalFaceCount}
+			
 		-- Convert the selectedFaces to array and store it in a variable
-		local selectedFacesArray = selectedFaces as Array
+		local selectedFacesArr = selectedFacesBArr as Array
 		
 		-- Loop that runs till selectedFacesArray is 0
-		while (selectedFacesArray.count > 0) do
+		while (selectedFacesArr.count > 0) do
 		(
 			-- Select the face of the first element in selectedFacesArray
-			unwrapMod.selectFaces #{selectedFacesArray[1]}
+			unwrapModifier.selectFaces #{selectedFacesArr[1]}
 			
 			-- Selects the elements from the faceSelection (from the above step)
-			unwrapMod.selectElement()
+			unwrapModifier.selectElement()
 			
 			-- Gets the selected faces
-			local selectedElementFaces = unwrapMod.getSelectedFaces()
+			local currentShellFacesBArr = unwrapModifier.getSelectedFaces()
 			
 			-- Append the selectedElementFaces to the uvShells array
-			append uvShells selectedElementFaces
+			append uvShellsArr currentShellFacesBArr
 			
 			-- Loop to iterate selectedElementFaces
-			for element in selectedElementFaces do
+			for faceIdx in currentShellFacesBArr do
 			(
 				-- Gets the index of element in selectedFacesArray
-				local index = findItem selectedFacesArray element
+				local selectedIdx = findItem selectedFacesArr faceIdx
 				
 				-- If index is present then delete the item in selectedFacesArray.
-				if (index != 0) do
+				if (selectedIdx != 0) do
 				(
-					deleteItem selectedFacesArray index
+					deleteItem selectedFacesArr selectedIdx
 				)
 			)
 		)
 					
-		-- Return UV shells
-		return uvShells
-		
-	),
-	
-	-- Function to get UVShellData from the selected faces and stores in an array of bitarrays. 
-	-- Here's how the return type looks like,
-	-- uvShell= #(#{},#{}..)
-	fn GetUVShellData unwrapMod =
-	(
-		-- Get selected faces
-		local selectedFaces = unwrapMod.getSelectedFaces()
-		
-		-- Get total Faces in the object
-		local totalFaceCount = unwrapMod.numberPolygons()
-		
-		-- Variable to store uvShells
-		local uvShells = #()
-		
-		-- If selected Faces is none then select all the faces
-		if selectedFaces.isEmpty do selectedFaces = #{1..totalFaceCount}
-	
-		-- Returns UV shell data
-		return (GetUVShell unwrapMod selectedFaces totalFaceCount uvShells)
+		-- Return UV shells array
+		return uvShellsArr
 	),
 	
 	-- Adds or udpates UV Shell index pairs in overlappedUVShellIdxArray containing indices i and j
@@ -206,34 +198,33 @@ struct OverlappedUV
 	),
 	
 	-- Assign groups for overlapped faces by looping overlappedUVShellArray
-	fn AssignSmoothingGroup unwrapMod overlappedUVShellArray =
+	fn GroupOverlappedUVShells unwrapModifier overlappedUVShellArray =
 	(
 		-- Choose SubObjectLevel 3
-		unwrapMod.setTVSubObjectMode 3
+		unwrapModifier.setTVSubObjectMode 3
 		
 		-- Deselect all the faces
-		unwrapMod.selectFaces #{}
+		unwrapModifier.selectFaces #{}
 		
 		-- Looping overlappedUVShellArray 
 		for i = 1 to overlappedUVShellArray.count do
 		(
-			-- Store overlappedUVShellArray[i] to tempVariable currFaceSelection
-			local currFaceSelection = overlappedUVShellArray[i]
+			-- Store overlappedUVShellArray[i] to tempVariable currentUVShell
+			local currentUVShell = overlappedUVShellArray[i]
 			
-			-- Select faces in currFaceSelection
-			unwrapMod.selectFaces currFaceSelection
+			-- Select faces in currentUVShell
+			unwrapModifier.selectFaces currentUVShell
 			
 			-- Create group for the current selection
-			unwrapMod.GroupCreateBySelection()
+			unwrapModifier.GroupCreateBySelection()
 			
 			-- Deselect all the selected faces as it will overlap with the next iteration
-			unwrapMod.selectFaces #{}
+			unwrapModifier.selectFaces #{}
 		)
-
 	),
 	
 	-- Function to generate an array of edge selections for each UV shell
-	fn GetUVShellEdgeArray unwrapMod uvShells =
+	fn GetUVShellEdgeArray unwrapModifier uvShells =
 	(
 		-- Initialize an empty array to store edges based on each UV Shell
 		local uvShellEdgeArray = #()
@@ -242,13 +233,13 @@ struct OverlappedUV
 		for index = 1 to uvShells.count do 
 		(
 			-- Select the faces of the current UV shell
-			unwrapMod.selectFaces uvShells[index]
+			unwrapModifier.selectFaces uvShells[index]
 			
 			--Convert the selected faces into selected edges
-			unwrapMod.faceToEdgeSelect()
+			unwrapModifier.faceToEdgeSelect()
 			
 			-- Retrieve the selected edges as a bitarray
-			local edgeArray = unwrapMod.getSelectedEdges()
+			local edgeArray = unwrapModifier.getSelectedEdges()
 			
 			-- Append the edges for the current UV shell to the uvShellEdgeArray
 			append uvShellEdgeArray edgeArray
@@ -258,57 +249,57 @@ struct OverlappedUV
 	),
 	
 	-- Function to map each edge to its respective vertices
-	fn GetUVShellEdgeToVertArray unwrapMod =
+	fn MapUVEdgesToVerticesArray unwrapModifier =
 	(
 		-- Get the total number of polygons in the UV shell
-		local totalPolygons = unwrapMod.numberPolygons()
+		local totalPolygonCount = unwrapModifier.numberPolygons()
 		
 		-- Select all faces in the UV shell
-		unwrapMod.selectFaces #{1..totalPolygons}
+		unwrapModifier.selectFaces #{1..totalPolygonCount}
 		
 		-- Convert the selected faces into selected edges
-		unwrapMod.faceToEdgeSelect()
+		unwrapModifier.faceToEdgeSelect()
 		
 		-- Get all the edges in a bitarray
-		local totalEdges = unwrapMod.getSelectedEdges()
+		local totalEdgeBArr = unwrapModifier.getSelectedEdges()
 		
 		-- Get the total number of edges
-		local totalEdgesCount = totalEdges.numberSet
+		local totalEdgesCount = totalEdgeBArr.numberSet
 		
 		-- Initialize an empty array to store the vertex data for each edge
-		local edgeToVertArray = #()
+		local edgeToVertMappingArray = #()
 		
 		-- Loop through each edge in the selection (totalEdgesCount)
 		for edgeIndex = 1 to totalEdgesCount do
 		(
 			-- Select the current edge
-			unwrapMod.selectEdges #{edgeIndex}
+			unwrapModifier.selectEdges #{edgeIndex}
 			\
 			-- Convert the selected edge into its corresponding vertices
-			unwrapMod.edgeToVertSelect()
+			unwrapModifier.edgeToVertSelect()
 			
 			-- Get the selected vertices as an array 
-			local vertArray = (unwrapMod.getSelectedVertices()) as array
+			local vertArray = (unwrapModifier.getSelectedVertices()) as array
 				
-			-- Append the vertex array for the current edge to edgeToVertArray
-			append edgeToVertArray vertArray
+			-- Append the vertex array for the current edge to edgeToVertMappingArray
+			append edgeToVertMappingArray vertArray
 		)
 		
 		-- Return the array containing vertex mappings for all edges in the UV shell
-		return edgeToVertArray
+		return edgeToVertMappingArray
 	),
 	
 	-- Function to retrieve the position data of all vertices
-	fn GetVertToVertArray unwrapMod = 
+	fn GetVertexPositionArray unwrapModifier = 
 	(
 		-- Get the total number of vertices in the UV shell
-		local totalVertices = unwrapMod.NumberVertices()
+		local totalVertexCount = unwrapModifier.NumberVertices()
 		
 		-- Collecting vertToVertPositionArray by iterating all vertices and getting its position
-		local vertToVertPositionArray = for i = 1 to totalVertices collect (unwrapMod.getVertexPosition 0 i)
+		local vertexPositionArray = for vertexIdx = 1 to totalVertexCount collect (unwrapModifier.getVertexPosition 0 vertexIdx)
 		
 		-- Return the array containing the positions of all vertices
-		return vertToVertPositionArray
+		return vertexPositionArray
 	),
 	
 	-- Function to check if two edges intersect in the UV space
@@ -415,14 +406,14 @@ struct OverlappedUV
 			-- Ensure the object is an Editable Poly with an Unwrap_UVW modifier
 			if(((classOf obj.baseObject) == Editable_Poly) and ((classOf obj.modifiers[obj.modifiers.count]) == Unwrap_UVW)) do
 			(
-				local unwrapMod = obj.modifiers[obj.modifiers.count]
-				if(unwrapMod != undefined) do
+				local unwrapModifier = obj.modifiers[obj.modifiers.count]
+				if(unwrapModifier != undefined) do
 				(
 					-- Disable undo and redraw for performance
 					with undo off, redraw off
 					(
 						-- Retrieve UV shell data
-						local uvShells = GetUVShellData unwrapMod
+						local uvShells = GetUVShellsFromSelectedFaces unwrapModifier
 						
 						-- If UV shells exist then process the below code
 						if(uvShells.count > 0) do
@@ -431,30 +422,30 @@ struct OverlappedUV
 							if (method == 1) then
 							(
 								-- Get minMaxData for the selected UVshells
-								local minMaxData = GetAreaUVShells unwrapMod uvShells
+								local minMaxData = calculateUVShellAreaData unwrapModifier uvShells
 								-- Check UVshells for overlap and return the overlapping indices as an array
 								local overlappedUVShellIdxArray = CheckBoundsOverlap minMaxData
 								-- Replace the Indices array with actual values
 								local overlappedUVShellArray = ReplaceIdxArrayWithActualArray uvShells overlappedUVShellIdxArray
 								-- Assign smoothing group for the overlapped UV shells based on overlappedUVShellArray
-								AssignSmoothingGroup unwrapMod overlappedUVShellArray
+								GroupOverlappedUVShells unwrapModifier overlappedUVShellArray
 								format "Bounding box calculation done.\n"
 							)
 							-- Edge-based method
 							else if (method == 2) then
 							(
 								-- Get the edges for the selected UV shells based on uvShellsArray
-								local uvShellEdgeArray = GetUVShellEdgeArray unwrapMod uvShells
+								local uvShellEdgeArray = GetUVShellEdgeArray unwrapModifier uvShells
 								-- Get the vertices for the edges and store then in an array
-								local edgeToVertArray = GetUVShellEdgeToVertArray unwrapMod
+								local edgeToVertArray = MapUVEdgesToVerticesArray unwrapModifier
 								-- Get all vertex positions and store them in an array
-								local vertToVertPositionArray = GetVertToVertArray unwrapMod
+								local vertToVertPositionArray = GetVertexPositionArray unwrapModifier
 								-- Check UVshells for overlap and return the overlapping indices as an array
 								local overlappedUVShellIdxArray = CheckEdgesOverlap uvShellEdgeArray edgeToVertArray vertToVertPositionArray
 								-- Replace the Indices array with actual values
 								local overlappedUVShellArray = ReplaceIdxArrayWithActualArray uvShells overlappedUVShellIdxArray
 								-- Assign smoothing group for the overlapped UV shells based on overlappedUVShellArray
-								AssignSmoothingGroup unwrapMod overlappedUVShellArray
+								GroupOverlappedUVShells unwrapModifier overlappedUVShellArray
 								format "Edge method calculation done.\n"
 							)
 							else
@@ -472,21 +463,21 @@ struct OverlappedUV
 	),
 	
 	-- Function to offset UV coordinates in the Unwrap_UVW modifier
-	fn offsetUV offsetVal =
+	fn offsetUVCoordinates offsetValue =
 	(
 		-- Check if the currently selected modifier in the ModPanel is an Unwrap_UVW modifier
 		if (classOf (modPanel.getCurrentObject()) == Unwrap_UVW) then
 		(
 			-- Get the currently active modifier which is Unwrap_UVW
-			local unwrapMod = modPanel.getCurrentObject()
+			local unwrapModifier = modPanel.getCurrentObject()
 			
 			-- Offset the selected UV elements by the given value (offsetVal)
-			unwrapMod.moveSelected offsetVal
+			unwrapModifier.moveSelected offsetValue
 		)
 		-- If Unwrap_UVW modifier is not present then show the message
 		else
 		(
-			messageBox "Add UnwrapUVW modifier"
+			messageBox "Add an UnwrapUVW modifier to the object"
 		)
 	)
 )
