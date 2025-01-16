@@ -1,0 +1,184 @@
+-- Function to check if two edges intersect in the UV space
+fn checkEdgeIntersection currentEdge nextEdge edgeToVertexMap vertexPositionMap =
+(
+	-- Get vertex indices for the current and next edges
+	local currentEdgeVertices = edgeToVertexMap[currentEdge]
+	local nextEdgeVertices = edgeToVertexMap[nextEdge]
+
+	-- Extract coordinates for the current edge
+	local x1 = vertexPositionMap[currentEdgeVertices[1]].x
+	local y1 = vertexPositionMap[currentEdgeVertices[1]].y
+	local x2 = vertexPositionMap[currentEdgeVertices[2]].x
+	local y2 = vertexPositionMap[currentEdgeVertices[2]].y
+
+	-- Extract coordinates for the next edge
+	local x3 = vertexPositionMap[nextEdgeVertices[1]].x
+	local y3 = vertexPositionMap[nextEdgeVertices[1]].y
+	local x4 = vertexPositionMap[nextEdgeVertices[2]].x
+	local y4 = vertexPositionMap[nextEdgeVertices[2]].y
+
+	-- Calculate differences for intersection formula
+	local diffY1 = y1 - y3
+	local diffX1 = x1 - x3
+	local diffX2 = x1 - x2
+	local diffY2 = y3 - y4
+	local diffY3 = y1 - y2
+	local diffX3 = x3 - x4
+
+	-- Calculate denominator
+	local denominator = (diffX2 * diffY2) - (diffY3 * diffX3)
+
+	-- Return false if lines are parallel
+	if (denominator == 0) do return false
+
+	-- Calculate intersection parameters t and u
+	local t = ((diffX1 * diffY2) - (diffY1 * diffX3)) / denominator
+	local u = -((diffX2 * diffY1) - (diffY3 * diffX1)) / denominator
+
+	-- Check if intersection is within bounds of both edges
+	return ((0 <= t and t <= 1) and (0 <= u and u <= 1))
+),
+
+-- Function to traverse edges of two UV shell elements and check for intersections
+fn checkUVShellEdgeIntersections currentShellEdges nextShellEdges edgeToVertexMap vertexPositionMap = 
+(
+	for currentEdge in currentShellEdges do
+		for nextEdge in nextShellEdges do
+			if (checkEdgeIntersection currentEdge nextEdge edgeToVertexMap vertexPositionMap) then return true
+	return false
+),
+
+-- Function to find overlapping edges among UV shells
+fn findOverlappingEdges uvShellEdges edgeToVertexMap vertexPositionMap = 
+(
+	local overlappingShellIndices = #()
+
+	for i = 1 to uvShellEdges.count do
+		for j = i + 1 to uvShellEdges.count where i != j do
+			if (checkUVShellEdgeIntersections uvShellEdges[i] uvShellEdges[j] edgeToVertexMap vertexPositionMap) do
+				overlappingShellIndices = updateOverlappingIndices overlappingShellIndices i j
+	
+	return overlappingShellIndices
+),
+
+-- Function to check UV overlap using specified methods
+-- Parameters:
+-- method: 1 for Bounding Box method, 2 for Edge-based method
+-- selectedObjects: Array of selected objects
+fn checkUVOverlap selectedObjects method =
+(
+	local startTime = timestamp()
+
+	if (selectedObjects.count == 1) do
+	(
+		local object = selectedObjects[1]
+		
+		if ((classOf object.baseObject == Editable_Poly) and (classOf object.modifiers[object.modifiers.count] == Unwrap_UVW)) do
+		(
+			local unwrapModifier = object.modifiers[object.modifiers.count]
+			if (unwrapModifier != undefined) do
+			(
+				with undo off, redraw off
+				(
+					local uvShells = getUVShellsFromSelectedFaces unwrapModifier
+
+					if (uvShells.count > 0) do
+					(
+						if (method == 1) then
+						(
+							local boundingBoxData = calculateUVShellBoundingBoxData unwrapModifier uvShells
+							local overlappingShellIndices = findBoundingBoxOverlaps boundingBoxData
+							local overlappingUVShells = mapIndicesToUVShells uvShells overlappingShellIndices
+							assignSmoothingGroups unwrapModifier overlappingUVShells
+							format "Bounding box method completed.\n"
+						)
+						else if (method == 2) then
+						(
+							local uvShellEdges = getUVShellEdges unwrapModifier uvShells
+							local edgeToVertexMap = mapEdgesToVertices unwrapModifier
+							local vertexPositionMap = getVertexPositions unwrapModifier
+							local overlappingShellIndices = findOverlappingEdges uvShellEdges edgeToVertexMap vertexPositionMap
+							local overlappingUVShells = mapIndicesToUVShells uvShells overlappingShellIndices
+							assignSmoothingGroups unwrapModifier overlappingUVShells
+							format "Edge-based method completed.\n"
+						)
+						else
+						(
+							print "Invalid method specified."
+						)
+					)
+				)
+			)
+		)
+	)
+
+	local endTime = timestamp()
+	format "Processing completed in % seconds.\n" ((endTime - startTime) / 1000.0)
+),
+
+-- Function to map overlapping indices to UV shells
+fn mapIndicesToUVShells uvShells overlappingIndices =
+(
+	local mappedUVShells = for indexSet in overlappingIndices collect
+	(
+		local combinedSet = #{ }
+		for index in indexSet do combinedSet += uvShells[index]
+		combinedSet
+	)
+	return mappedUVShells
+),
+
+-- Function to find bounding box overlaps and return overlapping index pairs
+fn findBoundingBoxOverlaps boundingBoxData =
+(
+	local overlappingIndices = #()
+
+	for i = 1 to boundingBoxData.count do
+		for j = i + 1 to boundingBoxData.count do
+			(
+				local [x1, y1, width1, height1] = boundingBoxData[i]
+				local [x2, y2, width2, height2] = boundingBoxData[j]
+				
+				local right1 = x1 + width1
+				local top1 = y1 + height1
+				local right2 = x2 + width2
+				local top2 = y2 + height2
+
+				if ((right1 > x2) and (x1 < right2) and (top1 > y2) and (y1 < top2)) do
+					 overlappingIndices = updateOverlappingIndices overlappingIndices i j
+			)
+	return overlappingIndices
+),
+
+-- Function to update overlapping indices
+fn updateOverlappingIndices overlappingIndices index1 index2 = 
+(
+	if (overlappingIndices.count == 0) then
+		append overlappingIndices #{index1, index2}
+	else
+	(
+		local updated = false
+		
+		for setIndex = 1 to overlappingIndices.count where not updated do
+		(
+			local indexSet = overlappingIndices[setIndex]
+			
+			if (indexSet[index1] and not indexSet[index2]) then
+			(
+				indexSet[index2] = true
+				updated = true
+			)
+			else if (not indexSet[index1] and indexSet[index2]) then
+			(
+				indexSet[index1] = true
+				updated = true
+			)
+			else if (indexSet[index1] and indexSet[index2]) then
+				updated = true
+		)
+		
+		if (not updated) then
+			append overlappingIndices #{index1, index2}
+	)
+	return overlappingIndices
+)
