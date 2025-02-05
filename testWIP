@@ -182,3 +182,52 @@ fn updateOverlappingIndices overlappingIndices index1 index2 =
 	)
 	return overlappingIndices
 )
+
+
+try (DestroyDialog handyUVRollout) catch()
+
+groupArr = #()
+
+Rollout handyUVRollout "Handy UV"
+(
+	group "Offset UV controls"
+	(
+		button saveGroups "Save Groups" width:85 align:#left across:2 tooltip:"LeftClick: Offsets the selected UVs along +U axis\nRightClick: Offsets the selected UVs along -U axis"
+		button loadGroups "Load Groups" width:85 align:#left across:2 tooltip:"LeftClick: Offsets the selected UVs along +V axis\nRightClick: Offsets the selected UVs along -V axis"
+	)
+	
+	on saveGroups pressed do
+	(
+		groups = $.modifiers[#Unwrap_UVW].groupName
+		
+		if (groups.count > 0) do
+		(
+			format "Groupname: %\n" groups
+			for i = 1 to groups.count do
+			(
+				$.modifiers[#Unwrap_UVW].GroupSelect groups[i]
+				
+				selectedFaces = $.modifiers[#Unwrap_UVW].getSelectedFaces()
+				
+				if (groups[i] != "--EMPTYENTRY--" and selectedFaces.numberSet != 0) do
+				(
+					append groupArr selectedFaces
+				)
+			)
+			format "Grouped Arr: %\n" groupArr
+		)
+	)
+
+	on loadGroups pressed do
+	(
+		for i = 1 to groupArr.count do
+		(
+			print groupArr[i]
+			$.modifiers[#Unwrap_UVW].selectFaces groupArr[i]
+			$.modifiers[#Unwrap_UVW].GroupCreateBySelection()
+			$.modifiers[#Unwrap_UVW].selectFaces #{}
+		)
+	)
+)
+
+CreateDialog handyUVRollout height: 195 width: 175
