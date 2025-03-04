@@ -38,6 +38,8 @@ struct sPipeOptimizer
 			format "connectedEdgesArr: %\n" connectedEdgesArr
 			
 			local totalPos = [0,0,0]
+			local pointPosArr = #()
+			local radiusVal = 0
 			
 			-- Get the center of point of the connected edges
 			for idx = 1 to connectedEdgesArr.count do
@@ -57,12 +59,36 @@ struct sPipeOptimizer
 				
 				local avgPos = totalPos / (vertPositionArr.count)
 				
-				local pt = Point size: 5 pos: avgPos
+				append pointPosArr avgPos
+				format "avgPos: %\n" avgPos
+				
+				radiusVal = distance vertPositionArr[1] avgPos
+				
+				format "radiusVal: %\n" radiusVal
+-- 				local pt = Point size: 5 pos: avgPos
 			)
-
+			
 			
 			-- Connect the points
+			local ss = SplineShape pos:[0,0,0]
+			addNewSpline ss
+			
+			if (pointPosArr.count > 1) do
+			(
+				for i = 1 to pointPosArr.count do
+				(
+					addKnot ss 1 #corner #line pointPosArr[i]
+				)
+			)
+			
 			-- Render in viewport - final tweaks
+			ss.render_displayRenderMesh = true
+			ss.render_sides = 5
+			ss.render_thickness = (radiusVal * 2)
+			updateShape ss
+			
+			-- Correct the knot order
+			
 		)
 	)
 )
