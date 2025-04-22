@@ -11,7 +11,7 @@ struct sPipeOptimizer
 	
 -- 	fn IsValidSplineObj obj = 
 -- 	(
--- 		return (classOf obj.baseObject == SplineShape)
+-- 		return ((classof currentSplineShapeObj) == SplineShape)
 -- 	),
 	
 	fn CreateKnotFromVertices obj vertexBArr pointPosArr =
@@ -65,6 +65,7 @@ struct sPipeOptimizer
 		ss.render_sides = 5
 		ss.render_thickness = (this._radiusVal * 2)
 		updateShape ss
+		return ss
 	),
 	
 	fn AutomaticEdgeSelection obj = 
@@ -97,12 +98,35 @@ struct sPipeOptimizer
 			)
 			
 			format "RadiusValBeforeConnectPoints: %\n" this._radiusVal
-			ConnectPoints pointPosArr this._radiusVal
+			
+			
+			local currentSplineShapeObj = ConnectPoints pointPosArr this._radiusVal
+-- 			format "classof currentSplineShapeObj: %\n" (classof currentSplineShapeObj)
+			-- Set cap to false in the spline
+			currentSplineShapeObj.cap = false
+			
+			
+			-- Set the sides of the radial to 3. Need to link it to the spinner
+			if ((classof currentSplineShapeObj) == SplineShape) then
+			(
+				currentSplineShapeObj.sides = 3
+			)
+			else
+			(
+				messageBox "The selected object is not a spline"
+			)
+			
 		)
 		else
 		(
 			messagebox "Select a vertex loop"
 		)
+	),
+	
+	-- This function removes the knots if the knots are of odd number
+	fn RemoveAlternateKnotsOdd do
+	(
+		
 	),
 	
 	-- Deletes every other selected knot from the currently selected spline object
@@ -229,3 +253,122 @@ struct sPipeOptimizer
 sPipeOptimizerInstance = sPipeOptimizer()
 sPipeOptimizerInstance.OptimizePipes()
 -- sPipeOptimizerInstance.DeleteAlternateKnotsFromSelection()
+
+
+
+/*
+local cylinderEndsBool = true
+
+-- Loop the selected edges
+PolyToolsSelect.Loop cylinderEndsBool
+
+-- Get selected edges
+local totalSelectedEdgesBArr = polyop.getEdgeSelection obj
+format "Selected edges: %\n" selectedEdgesBArr
+
+local connectedEdgesArr = #()
+local visitedEdges = #{}
+
+-- Traverse all the edges and store the connected edges in an array
+for edge in totalSelectedEdgesBArr do
+(
+	if visitedEdges[edge] then continue
+		
+	polyop.setEdgeSelection obj #{edge}
+	PolyToolsSelect.Loop cylinderEndsBool
+	local currentSelectedEdgesBArr = polyop.getEdgeSelection obj
+	visitedEdges += currentSelectedEdgesBArr
+	appendIfUnique connectedEdgesArr currentSelectedEdgesBArr
+)
+polyop.setEdgeSelection obj totalSelectedEdgesBArr
+format "connectedEdgesArr: %\n" connectedEdgesArr
+
+local totalPos = [0,0,0]
+local pointPosArr = #()
+local radiusVal = 0
+
+-- Get the center of point of the connected edges
+for idx = 1 to connectedEdgesArr.count do
+(
+	totalPos = [0,0,0]
+	
+	local currentEdgeLoopVertsBArr = polyop.getVertsUsingEdge obj connectedEdgesArr[idx]
+	format "currentEdgeLoopVertsBArr: %\n" currentEdgeLoopVertsBArr
+
+	local vertPositionArr = polyop.getVerts obj currentEdgeLoopVertsBArr
+	format "vertPositionArr: %\n" vertPositionArr
+	
+	for idx = 1 to vertPositionArr.count do
+	(
+		totalPos += vertPositionArr[idx]
+	)
+	
+	local avgPos = totalPos / (vertPositionArr.count)
+	
+	append pointPosArr avgPos
+	format "avgPos: %\n" avgPos
+	
+	radiusVal = distance vertPositionArr[1] avgPos
+	
+	format "radiusVal: %\n" radiusVal
+-- 				local pt = Point size: 5 pos: avgPos
+)
+
+
+-- Connect the points
+local ss = SplineShape pos:[0,0,0]
+addNewSpline ss
+
+if (pointPosArr.count > 1) do
+(
+	for i = 1 to pointPosArr.count do
+	(
+		addKnot ss 1 #corner #line pointPosArr[i]
+	)
+)
+
+-- Render in viewport - final tweaks
+ss.render_displayRenderMesh = true
+ss.render_sides = 5
+ss.render_thickness = (radiusVal * 2)
+updateShape ss
+
+-- Correct the knot order
+*/
+
+
+
+-- 		local totalKnots = numKnots splineObj splineIndex
+-- 		format "totalKnots: %\n" totalKnots
+
+
+
+
+/*
+-- Get the center of point of the connected edges
+for idx = 1 to connectedEdgesArr.count do
+(
+	totalPos = [0,0,0]
+	
+	local currentEdgeLoopVertsBArr = polyop.getVertsUsingEdge obj connectedEdgesArr[idx]
+	format "currentEdgeLoopVertsBArr: %\n" currentEdgeLoopVertsBArr
+
+	local vertPositionArr = polyop.getVerts obj currentEdgeLoopVertsBArr
+	format "vertPositionArr: %\n" vertPositionArr
+	
+	for idx = 1 to vertPositionArr.count do
+	(
+		totalPos += vertPositionArr[idx]
+	)
+	
+	local avgPos = totalPos / (vertPositionArr.count)
+	
+	append pointPosArr avgPos
+	format "avgPos: %\n" avgPos
+	
+	radiusVal = distance vertPositionArr[1] avgPos
+	
+	format "radiusVal: %\n" radiusVal
+-- 				local pt = Point size: 5 pos: avgPos
+)
+*/
