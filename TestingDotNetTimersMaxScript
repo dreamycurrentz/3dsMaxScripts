@@ -1,0 +1,57 @@
+fn myDelayedFunction =
+(
+	print "Function executed after 2 seconds."
+)
+
+myTimer = DotNetObject "System.Windows.Forms.Timer"
+myTimer.interval = 2000
+
+fn onTimerTick s e =
+(
+	s.Stop()
+	myDelayedFunction()
+)
+
+dotNet.addEventHandler myTimer "Tick" onTimerTick
+
+myTimer.Start()
+
+
+
+
+
+
+
+
+-- Function to run after 2 seconds
+fn myDelayedFunction =
+(
+    print "Function ran after 2 seconds"
+)
+
+-- Launch a background thread that waits and then triggers the callback
+fn startDelayedExecution =
+(
+    dotNet.loadAssembly "System.Threading"
+
+    local dotNetThreadStart = dotNetClass "System.Threading.ThreadStart"
+
+    -- Define the threaded function using a dotNetDelegate
+    local threadFunction = dotNetDelegate dotNetThreadStart (
+        function =
+        (
+            -- Wait for 2 seconds
+            (dotNetClass "System.Threading.Thread").Sleep 2000
+
+            -- Run the function on Max's main thread using callbacks
+            callbacks.addScript #postRender "myDelayedFunction()" id:#myDelayedCallback
+        )
+    )
+
+    -- Start the thread
+    local thread = dotNetObject "System.Threading.Thread" threadFunction
+    thread.Start()
+)
+
+-- Run this to test
+startDelayedExecution()
